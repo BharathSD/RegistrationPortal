@@ -23,10 +23,14 @@ export type MedicalInfoInput = z.infer<typeof medicalInfoSchema>;
  * Server-side is the source of truth; the web client mirrors this schema for
  * instant per-field feedback but must never be trusted on its own.
  *
- * Cricket-profile fields (role, batting/bowling style, position, experience)
- * are deliberately optional here and absent from `playerSelfInputSchema`
- * below — a player never sets their own playing type. An admin assigns it
- * after reviewing the player (see assignCricketProfileSchema).
+ * Player type (`cricketRole` — Super Striker/All-Rounder/Batsman/Bowler) is
+ * the one field a player never sets themselves: it's deliberately optional
+ * here and the only field omitted from `playerSelfInputSchema` below,
+ * because an admin assigns it while reviewing the player (see
+ * assignCricketProfileSchema). Batting/bowling style is self-reported at
+ * registration and editable afterwards; preferred position and experience
+ * level aren't collected anywhere in the UI but stay optional here rather
+ * than being deleted outright, in case that changes later.
  */
 export const playerProfileSchema = z.object({
   fullName: z.string().trim().min(2).max(100),
@@ -35,8 +39,8 @@ export const playerProfileSchema = z.object({
   email: z.string().email().optional().nullable(),
 
   cricketRole: z.enum(CRICKET_ROLES).optional(),
-  battingStyle: z.enum(BATTING_STYLES).optional(),
-  bowlingStyle: z.enum(BOWLING_STYLES).optional(),
+  battingStyle: z.enum(BATTING_STYLES),
+  bowlingStyle: z.enum(BOWLING_STYLES).default("NONE"),
   preferredBattingPosition: z.coerce.number().int().min(1).max(11).optional(),
   experienceLevel: z.enum(EXPERIENCE_LEVELS).optional(),
 
@@ -61,23 +65,15 @@ export const playerProfileSchema = z.object({
 });
 export type PlayerProfileInput = z.infer<typeof playerProfileSchema>;
 
-/** What a player may submit themselves — at registration or via self-edit. Cricket-profile fields are omitted (not just optional): sending them here is silently dropped, never persisted. */
+/** What a player may submit themselves — at registration or via self-edit. Player type (`cricketRole`) is omitted (not just optional): sending it here is silently dropped, never persisted. */
 export const playerSelfInputSchema = playerProfileSchema.omit({
   cricketRole: true,
-  battingStyle: true,
-  bowlingStyle: true,
-  preferredBattingPosition: true,
-  experienceLevel: true,
 });
 export type PlayerSelfInput = z.infer<typeof playerSelfInputSchema>;
 
-/** Admin-only: assigns/updates a player's cricket profile after reviewing them. */
+/** Admin-only: assigns/reassigns a player's type while reviewing them. Nothing else about their profile is admin-editable. */
 export const assignCricketProfileSchema = z.object({
   cricketRole: z.enum(CRICKET_ROLES),
-  battingStyle: z.enum(BATTING_STYLES),
-  bowlingStyle: z.enum(BOWLING_STYLES).default("NONE"),
-  preferredBattingPosition: z.coerce.number().int().min(1).max(11),
-  experienceLevel: z.enum(EXPERIENCE_LEVELS),
 });
 export type AssignCricketProfileInput = z.infer<typeof assignCricketProfileSchema>;
 

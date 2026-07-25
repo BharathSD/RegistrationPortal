@@ -4,7 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { RotateCw, ShieldCheck, User } from "lucide-react";
 import type { Player } from "@cricket-platform/shared";
 
-/** The digital player ID card: front shows photo/name/role/Player ID, back shows a QR for match-day identity verification. Tap or click to flip (docs/WIREFRAMES.md #10). */
+/** The digital player ID card: front shows photo/name/player type/Player ID, back shows a QR for match-day identity verification. Tap or click to flip (docs/WIREFRAMES.md #10). */
 export function PlayerCard({ player }: { player: Player }) {
   const [flipped, setFlipped] = useState(false);
 

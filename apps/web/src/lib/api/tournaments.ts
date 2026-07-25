@@ -26,11 +26,37 @@ export function useCreateTournament() {
   });
 }
 
+export function useUpdateTournament() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, changes }: { id: string; changes: Partial<TournamentInput> }) =>
+      apiRequest<Tournament>(`/tournaments/${id}`, { method: "PATCH", body: changes }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tournaments"] }),
+  });
+}
+
 export function usePublishTournament() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiRequest<Tournament>(`/tournaments/${id}/publish`, { method: "POST" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tournaments"] }),
+  });
+}
+
+export function useDeleteTournament() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiRequest<void>(`/tournaments/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tournaments"] }),
+  });
+}
+
+export function useRemoveFromRoster(tournamentId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (registrationId: string) =>
+      apiRequest<void>(`/tournaments/${tournamentId}/roster/${registrationId}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tournaments", tournamentId, "roster"] }),
   });
 }
 

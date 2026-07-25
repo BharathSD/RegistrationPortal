@@ -34,7 +34,7 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
       rulesAcceptedAt: data.rulesAccepted ? now : null,
       createdAt: now,
       updatedAt: now,
-      player: { id: data.playerId, fullName: "Test Player", playerId: "CKT-KA-26-000099", mobile: "+910000000000" },
+      player: { id: data.playerId, fullName: "Test Player", playerId: "AVI-000099", mobile: "+910000000000" },
       tournament: { id: data.tournamentId, name: "Test Tournament", feeRequired: false, entryFee: 0 },
     };
     this.registrations.push(registration);

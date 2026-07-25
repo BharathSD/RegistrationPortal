@@ -8,4 +8,6 @@ export interface TournamentRepository {
   update(id: string, data: Partial<TournamentInput>): Promise<Tournament>;
   setStatus(id: string, status: TournamentStatus): Promise<Tournament>;
   countConfirmedRegistrations(id: string): Promise<number>;
+  /** Deletes the tournament along with every registration, payment, checkin, stat, and campaign tied to it. */
+  remove(id: string): Promise<void>;
 }

@@ -35,19 +35,19 @@ function setup() {
 }
 
 describe("ApprovePlayerUseCase", () => {
-  it("issues a Player ID in the CKT-<STATE>-<YY>-<SEQ> format, marks VERIFIED, and notifies via WhatsApp", async () => {
+  it("issues a Player ID in the AVI-<SEQ> format, marks VERIFIED, and notifies via WhatsApp", async () => {
     const { playerRepo, whatsAppProvider, approvePlayer } = setup();
     const player = await playerRepo.create({ mobile: "+919876543230", ...PROFILE });
 
     const approved = await approvePlayer(player.id, "admin-1");
 
     expect(approved.verificationStatus).toBe("VERIFIED");
-    expect(approved.playerId).toMatch(/^CKT-PB-\d{2}-\d{6}$/);
+    expect(approved.playerId).toMatch(/^AVI-\d{6}$/);
     expect(whatsAppProvider.sent).toHaveLength(1);
     expect(whatsAppProvider.sent[0].to).toBe("+919876543230");
   });
 
-  it("assigns sequential Player IDs within the same state and year", async () => {
+  it("assigns sequential Player IDs globally, in approval order", async () => {
     const { playerRepo, approvePlayer } = setup();
     const p1 = await playerRepo.create({ mobile: "+919876543230", ...PROFILE });
     const p2 = await playerRepo.create({ mobile: "+919876543240", ...PROFILE, fullName: "Second Player" });
@@ -55,8 +55,8 @@ describe("ApprovePlayerUseCase", () => {
     const approved1 = await approvePlayer(p1.id, "admin-1");
     const approved2 = await approvePlayer(p2.id, "admin-1");
 
-    const seq1 = Number(approved1.playerId!.split("-")[3]);
-    const seq2 = Number(approved2.playerId!.split("-")[3]);
+    const seq1 = Number(approved1.playerId!.split("-")[1]);
+    const seq2 = Number(approved2.playerId!.split("-")[1]);
     expect(seq2).toBe(seq1 + 1);
   });
 
@@ -71,5 +71,13 @@ describe("ApprovePlayerUseCase", () => {
   it("throws NotFoundError for an unknown player id", async () => {
     const { approvePlayer } = setup();
     await expect(approvePlayer("unknown-id", "admin-1")).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("refuses to approve a player with no cricket category assigned yet", async () => {
+    const { playerRepo, approvePlayer } = setup();
+    const { cricketRole, ...profileWithoutRole } = PROFILE;
+    const player = await playerRepo.create({ mobile: "+919876543230", ...profileWithoutRole });
+
+    await expect(approvePlayer(player.id, "admin-1")).rejects.toBeInstanceOf(ConflictError);
   });
 });

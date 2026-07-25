@@ -10,7 +10,7 @@ import { makeTournamentsController } from "../controllers/tournaments.controller
 export function tournamentsRoutes(useCases: TournamentsUseCases): Router {
   const router = Router();
   const controller = makeTournamentsController(useCases);
-  const adminOnly = [authenticate, requireAdmin, requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN")];
+  const adminOnly = [authenticate, requireAdmin, requireRole("ADMIN")];
 
   // Public, read-only (drafts are additionally filtered out for non-admins in the controller)
   router.get("/", optionalAuthenticate, asyncHandler(controller.list));
@@ -26,6 +26,8 @@ export function tournamentsRoutes(useCases: TournamentsUseCases): Router {
   );
   router.post("/:tournamentId/publish", ...adminOnly, asyncHandler(controller.publish));
   router.get("/:tournamentId/roster", ...adminOnly, asyncHandler(controller.roster));
+  router.delete("/:tournamentId/roster/:registrationId", ...adminOnly, asyncHandler(controller.removeFromRoster));
+  router.delete("/:tournamentId", ...adminOnly, asyncHandler(controller.remove));
 
   return router;
 }

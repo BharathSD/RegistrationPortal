@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, MapPin, Trophy } from "lucide-react";
+import { CalendarDays, MapPin, Pencil, Trophy } from "lucide-react";
 import { Button, Card, Skeleton } from "../../design-system";
 import { StatusBadge } from "../../design-system/components/Badge";
 import { useMyProfile } from "../../lib/api/players";
@@ -8,6 +8,7 @@ import { useTournaments } from "../../lib/api/tournaments";
 import { useAuthStore } from "../../lib/hooks/useAuthStore";
 import { PlayerCard } from "../player-card/PlayerCard";
 import { RegisterTournamentModal } from "../tournament-registration/RegisterTournamentModal";
+import { EditProfileModal } from "./EditProfileModal";
 import type { Tournament } from "@cricket-platform/shared";
 
 export function PlayerDashboardPage() {
@@ -18,6 +19,7 @@ export function PlayerDashboardPage() {
   const isVerified = player?.verificationStatus === "VERIFIED";
   const { data: tournaments, isLoading: tournamentsLoading } = useTournaments("PUBLISHED");
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   const registeredTournamentIds = useMemo(
     () => new Set(registrations?.map((r) => r.tournamentId)),
@@ -100,22 +102,30 @@ export function PlayerDashboardPage() {
       </div>
 
       <div>
-        <h2 className="mb-3 font-display text-lg font-semibold">Profile summary</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold">Profile summary</h2>
+          <Button size="sm" variant="secondary" onClick={() => setEditingProfile(true)}>
+            <Pencil className="h-3.5 w-3.5" /> Edit profile
+          </Button>
+        </div>
         <Card className="grid grid-cols-2 gap-y-2 text-sm">
-          <span className="text-text-secondary">Role</span>
+          <span className="text-text-secondary">Player Type</span>
           <span>{player.cricketRole ? player.cricketRole.replace("_", " ") : "Not yet assigned by admin"}</span>
+          <span className="text-text-secondary">Batting / bowling</span>
+          <span>
+            {player.battingStyle?.replace("_", "-") ?? "—"} · {player.bowlingStyle?.replace(/_/g, " ") ?? "—"}
+          </span>
           <span className="text-text-secondary">Location</span>
           <span>
             {player.city}, {player.state}
           </span>
-          <span className="text-text-secondary">Experience</span>
-          <span>{player.experienceLevel ?? "Not yet assigned by admin"}</span>
         </Card>
       </div>
 
       {selectedTournament && (
         <RegisterTournamentModal tournament={selectedTournament} onClose={() => setSelectedTournament(null)} />
       )}
+      {editingProfile && <EditProfileModal player={player} onClose={() => setEditingProfile(false)} />}
     </div>
   );
 }

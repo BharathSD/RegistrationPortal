@@ -11,7 +11,7 @@ const PLAYER_PROFILE: PlayerProfileInput = {
   fullName: "Rohan Sharma",
   dateOfBirth: new Date("1998-04-12"),
   gender: "MALE",
-  cricketRole: "BATTER",
+  cricketRole: "BATSMAN",
   battingStyle: "RIGHT_HAND",
   bowlingStyle: "NONE",
   preferredBattingPosition: 3,
@@ -56,7 +56,7 @@ describe("RegisterForTournamentUseCase", () => {
   it("confirms registration immediately for a free, published tournament", async () => {
     const { playerRepo, tournamentRepo, registerForTournament, whatsAppProvider } = setup();
     const player = await playerRepo.create({ mobile: "+919876543210", ...PLAYER_PROFILE });
-    await playerRepo.assignPlayerId(player.id, "CKT-KA-26-000001", "admin-1");
+    await playerRepo.assignPlayerId(player.id, "AVI-000001", "admin-1");
     const tournament = await tournamentRepo.create({ ...TOURNAMENT_INPUT, slug: "summer-t20", createdByAdminId: "admin-1" });
     await tournamentRepo.setStatus(tournament.id, "PUBLISHED");
 
@@ -70,7 +70,7 @@ describe("RegisterForTournamentUseCase", () => {
   it("requires PENDING_PAYMENT status when the tournament charges an entry fee", async () => {
     const { playerRepo, tournamentRepo, registerForTournament } = setup();
     const player = await playerRepo.create({ mobile: "+919876543210", ...PLAYER_PROFILE });
-    await playerRepo.assignPlayerId(player.id, "CKT-KA-26-000001", "admin-1");
+    await playerRepo.assignPlayerId(player.id, "AVI-000001", "admin-1");
     const tournament = await tournamentRepo.create({
       ...TOURNAMENT_INPUT,
       feeRequired: true,
@@ -97,7 +97,7 @@ describe("RegisterForTournamentUseCase", () => {
   it("is idempotent: registering twice returns the existing registration instead of erroring", async () => {
     const { playerRepo, tournamentRepo, registerForTournament } = setup();
     const player = await playerRepo.create({ mobile: "+919876543210", ...PLAYER_PROFILE });
-    await playerRepo.assignPlayerId(player.id, "CKT-KA-26-000001", "admin-1");
+    await playerRepo.assignPlayerId(player.id, "AVI-000001", "admin-1");
     const tournament = await tournamentRepo.create({ ...TOURNAMENT_INPUT, slug: "summer-t20", createdByAdminId: "admin-1" });
     await tournamentRepo.setStatus(tournament.id, "PUBLISHED");
 
@@ -111,7 +111,7 @@ describe("RegisterForTournamentUseCase", () => {
   it("rejects registration once the tournament has reached max participants", async () => {
     const { playerRepo, tournamentRepo, registerForTournament } = setup();
     const player = await playerRepo.create({ mobile: "+919876543210", ...PLAYER_PROFILE });
-    await playerRepo.assignPlayerId(player.id, "CKT-KA-26-000001", "admin-1");
+    await playerRepo.assignPlayerId(player.id, "AVI-000001", "admin-1");
     const tournament = await tournamentRepo.create({
       ...TOURNAMENT_INPUT,
       maxParticipants: 1,

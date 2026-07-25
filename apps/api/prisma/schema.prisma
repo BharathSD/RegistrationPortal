@@ -22,10 +22,10 @@ enum Gender {
 }
 
 enum CricketRole {
-  BATTER
-  BOWLER
+  SUPER_STRIKER
   ALL_ROUNDER
-  WICKET_KEEPER
+  BATSMAN
+  BOWLER
 }
 
 enum BattingStyle {
@@ -73,8 +73,7 @@ enum OtpPurpose {
 }
 
 enum AdminRole {
-  SUPER_ADMIN
-  TOURNAMENT_ADMIN
+  ADMIN
   SCANNER
 }
 

@@ -90,4 +90,12 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     });
     return items.map(toDomainWithRelations);
   }
+
+  async remove(id: string): Promise<void> {
+    await this.db.$transaction(async (tx) => {
+      await tx.payment.deleteMany({ where: { registrationId: id } });
+      await tx.checkin.deleteMany({ where: { registrationId: id } });
+      await tx.registration.delete({ where: { id } });
+    });
+  }
 }

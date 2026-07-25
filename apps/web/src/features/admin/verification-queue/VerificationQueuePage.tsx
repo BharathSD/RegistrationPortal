@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, User } from "lucide-react";
 import { Button, Card, Modal, Skeleton } from "../../../design-system";
 import { Input, Select } from "../../../design-system/components/Field";
 import { StatusBadge } from "../../../design-system/components/Badge";
@@ -9,20 +9,12 @@ import {
   useApprovePlayer,
   useRejectPlayer,
   useRequestChanges,
-  useAssignCricketProfile,
   useDuplicateFlags,
 } from "../../../lib/api/admin";
 import { useToast } from "../../../design-system/components/Toast";
 import { ApiError } from "../../../lib/api/client";
-import {
-  BATTING_STYLES,
-  BOWLING_STYLES,
-  CRICKET_ROLES,
-  EXPERIENCE_LEVELS,
-  type AssignCricketProfileInput,
-  type Player,
-  type VerificationStatus,
-} from "@cricket-platform/shared";
+import { PlayerTypeEditor } from "../shared/PlayerTypeEditor";
+import type { VerificationStatus } from "@cricket-platform/shared";
 
 const STATUS_OPTIONS: Array<{ value: VerificationStatus | ""; label: string }> = [
   { value: "", label: "All statuses" },
@@ -142,6 +134,17 @@ function PlayerDetailModal({ playerId, isDuplicate, onClose }: { playerId: strin
         <Skeleton className="h-64" />
       ) : (
         <div className="flex flex-col gap-4">
+          {player.photoUrl ? (
+            <img
+              src={player.photoUrl}
+              alt={`${player.fullName}'s profile photo`}
+              className="h-24 w-24 self-center rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-24 w-24 items-center justify-center self-center rounded-full bg-canvas text-text-secondary">
+              <User className="h-10 w-10" />
+            </div>
+          )}
           {isDuplicate && (
             <div className="flex items-center gap-2 rounded-sm border border-warning/30 bg-warning/5 p-3 text-sm text-warning">
               <AlertTriangle className="h-4 w-4" /> Possible duplicate identity flagged — review before approving.
@@ -180,11 +183,16 @@ function PlayerDetailModal({ playerId, isDuplicate, onClose }: { playerId: strin
             )}
           </dl>
 
-          {mode === "view" && <CricketProfileEditor player={player} />}
+          {mode === "view" && <PlayerTypeEditor player={player} />}
 
           {mode === "view" && (
             <div className="flex flex-wrap gap-2">
-              <Button onClick={handleApprove} loading={approve.isPending}>
+              <Button
+                onClick={handleApprove}
+                loading={approve.isPending}
+                disabled={!player.cricketRole}
+                title={!player.cricketRole ? "Assign a player type below before approving" : undefined}
+              >
                 Approve
               </Button>
               <Button variant="danger" onClick={() => setMode("reject")}>
@@ -194,6 +202,9 @@ function PlayerDetailModal({ playerId, isDuplicate, onClose }: { playerId: strin
                 Request changes
               </Button>
             </div>
+          )}
+          {mode === "view" && !player.cricketRole && (
+            <p className="text-xs text-warning">Assign a player type below before this player can be approved.</p>
           )}
 
           {mode === "reject" && (
@@ -226,96 +237,5 @@ function PlayerDetailModal({ playerId, isDuplicate, onClose }: { playerId: strin
         </div>
       )}
     </Modal>
-  );
-}
-
-/**
- * Players never set their own cricket role/style/position/experience — an
- * admin assigns it here after reviewing them. Independent of approve/reject
- * so it can be set before, during, or after verification.
- */
-function CricketProfileEditor({ player }: { player: Player }) {
-  const assignCricketProfile = useAssignCricketProfile();
-  const toast = useToast();
-  const [form, setForm] = useState<Partial<AssignCricketProfileInput>>({
-    cricketRole: player.cricketRole ?? undefined,
-    battingStyle: player.battingStyle ?? undefined,
-    bowlingStyle: player.bowlingStyle ?? "NONE",
-    preferredBattingPosition: player.preferredBattingPosition ?? undefined,
-    experienceLevel: player.experienceLevel ?? undefined,
-  });
-
-  // Keep the form in sync if the admin opens a different player's modal.
-  useEffect(() => {
-    setForm({
-      cricketRole: player.cricketRole ?? undefined,
-      battingStyle: player.battingStyle ?? undefined,
-      bowlingStyle: player.bowlingStyle ?? "NONE",
-      preferredBattingPosition: player.preferredBattingPosition ?? undefined,
-      experienceLevel: player.experienceLevel ?? undefined,
-    });
-  }, [player.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  function update<K extends keyof AssignCricketProfileInput>(key: K, value: AssignCricketProfileInput[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  const canSave = form.cricketRole && form.battingStyle && form.preferredBattingPosition && form.experienceLevel;
-
-  async function handleSave() {
-    try {
-      await assignCricketProfile.mutateAsync({ playerId: player.id, input: form as AssignCricketProfileInput });
-      toast.success("Cricket profile assigned.");
-    } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message);
-    }
-  }
-
-  return (
-    <div className="rounded-sm border border-border p-3">
-      <p className="mb-3 text-sm font-semibold">
-        Cricket Profile <span className="font-normal text-text-secondary">(assigned by admin, not the player)</span>
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        <Select
-          label="Role"
-          placeholder="Select role"
-          value={form.cricketRole ?? ""}
-          onChange={(e) => update("cricketRole", e.target.value as AssignCricketProfileInput["cricketRole"])}
-          options={CRICKET_ROLES.map((r) => ({ value: r, label: r.replace("_", " ") }))}
-        />
-        <Select
-          label="Batting style"
-          placeholder="Select style"
-          value={form.battingStyle ?? ""}
-          onChange={(e) => update("battingStyle", e.target.value as AssignCricketProfileInput["battingStyle"])}
-          options={BATTING_STYLES.map((s) => ({ value: s, label: s.replace("_", "-") }))}
-        />
-        <Select
-          label="Bowling style"
-          value={form.bowlingStyle ?? "NONE"}
-          onChange={(e) => update("bowlingStyle", e.target.value as AssignCricketProfileInput["bowlingStyle"])}
-          options={BOWLING_STYLES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
-        />
-        <Input
-          label="Batting position (1–11)"
-          type="number"
-          min={1}
-          max={11}
-          value={form.preferredBattingPosition ?? ""}
-          onChange={(e) => update("preferredBattingPosition", Number(e.target.value))}
-        />
-        <Select
-          label="Experience level"
-          placeholder="Select level"
-          value={form.experienceLevel ?? ""}
-          onChange={(e) => update("experienceLevel", e.target.value as AssignCricketProfileInput["experienceLevel"])}
-          options={EXPERIENCE_LEVELS.map((l) => ({ value: l, label: l }))}
-        />
-      </div>
-      <Button size="sm" className="mt-3" disabled={!canSave} loading={assignCricketProfile.isPending} onClick={handleSave}>
-        Save cricket profile
-      </Button>
-    </div>
   );
 }

@@ -19,4 +19,6 @@ export interface RegistrationRepository {
   setStatus(id: string, status: RegistrationStatus): Promise<Registration>;
   listByTournament(tournamentId: string): Promise<RegistrationWithRelations[]>;
   listByPlayer(playerId: string): Promise<RegistrationWithRelations[]>;
+  /** Deletes the registration along with its payment/checkin records. */
+  remove(id: string): Promise<void>;
 }

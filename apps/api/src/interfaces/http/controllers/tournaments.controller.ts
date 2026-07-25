@@ -8,6 +8,8 @@ export interface TournamentsUseCases {
   updateTournament: (id: string, changes: Partial<TournamentInput>) => Promise<unknown>;
   publishTournament: (id: string) => Promise<unknown>;
   getRoster: (id: string) => Promise<unknown>;
+  deleteTournament: (id: string) => Promise<void>;
+  removeRegistration: (tournamentId: string, registrationId: string) => Promise<void>;
 }
 
 export function makeTournamentsController(useCases: TournamentsUseCases) {
@@ -45,6 +47,16 @@ export function makeTournamentsController(useCases: TournamentsUseCases) {
     async roster(req: Request, res: Response) {
       const roster = await useCases.getRoster(req.params.tournamentId);
       res.status(200).json(roster);
+    },
+
+    async remove(req: Request, res: Response) {
+      await useCases.deleteTournament(req.params.tournamentId);
+      res.status(204).send();
+    },
+
+    async removeFromRoster(req: Request, res: Response) {
+      await useCases.removeRegistration(req.params.tournamentId, req.params.registrationId);
+      res.status(204).send();
     },
   };
 }

@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { GENDERS, JERSEY_SIZES, type PlayerProfileInput } from "@cricket-platform/shared";
+import {
+  BATTING_STYLES,
+  BOWLING_STYLES,
+  GENDERS,
+  JERSEY_SIZES,
+  type PlayerProfileInput,
+} from "@cricket-platform/shared";
 import { Button, Card, Checkbox, Stepper } from "../../design-system";
 import { Input, Select } from "../../design-system/components/Field";
 import { OtpGate } from "../auth-otp/OtpGate";
@@ -10,7 +16,7 @@ import { useToast } from "../../design-system/components/Toast";
 import { ApiError } from "../../lib/api/client";
 import { TermsAndConditionsModal } from "./TermsAndConditionsModal";
 
-const STEPS = ["Verify mobile", "Personal", "Address", "Emergency contact", "Jersey", "Review"];
+const STEPS = ["Verify mobile", "Personal", "Address", "Emergency contact", "Jersey", "Cricket profile", "Review"];
 
 const MAX_PHOTO_SIZE_MB = 5;
 const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
@@ -114,13 +120,16 @@ export function PlayerRegistrationWizard() {
         <StepJersey data={data} update={update} onNext={() => setStepIndex(5)} onBack={() => setStepIndex(3)} />
       )}
       {stepIndex === 5 && (
+        <StepCricketProfile data={data} update={update} onNext={() => setStepIndex(6)} onBack={() => setStepIndex(4)} />
+      )}
+      {stepIndex === 6 && (
         <StepReview
           data={data}
           update={update}
           mobile={mobile}
           submitting={registerPlayer.isPending || uploadPhoto.isPending}
           onSubmit={handleSubmit}
-          onBack={() => setStepIndex(4)}
+          onBack={() => setStepIndex(5)}
         />
       )}
     </div>
@@ -302,6 +311,35 @@ function StepJersey({ data, update, onNext, onBack }: StepProps) {
   );
 }
 
+function StepCricketProfile({ data, update, onNext, onBack }: StepProps) {
+  const canContinue = data.battingStyle;
+  return (
+    <Card className="flex flex-col gap-4">
+      <h2 className="font-display text-lg font-semibold">Cricket profile</h2>
+      <p className="-mt-2 text-xs text-text-secondary">
+        Tell us how you play. Your player type (e.g. Super Striker, All-Rounder) is assigned separately by an admin —
+        this is just about your style.
+      </p>
+      <Select
+        label="Batting style"
+        required
+        placeholder="Select style"
+        value={data.battingStyle ?? ""}
+        onChange={(e) => update("battingStyle", e.target.value as PlayerProfileInput["battingStyle"])}
+        options={BATTING_STYLES.map((s) => ({ value: s, label: s.replace("_", "-") }))}
+      />
+      <Select
+        label="Bowling style"
+        value={data.bowlingStyle ?? "NONE"}
+        onChange={(e) => update("bowlingStyle", e.target.value as PlayerProfileInput["bowlingStyle"])}
+        options={BOWLING_STYLES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
+      />
+      <NavButtons onBack={onBack} onNext={onNext} nextDisabled={!canContinue} />
+      {!canContinue && <p className="text-xs text-text-secondary">Select a batting style to continue.</p>}
+    </Card>
+  );
+}
+
 function StepReview({
   data,
   update,
@@ -347,13 +385,17 @@ function StepReview({
         <dd>
           {data.jerseySize} · #{data.jerseyNumberPref1 || "—"}
         </dd>
+        <dt className="text-text-secondary">Batting / bowling</dt>
+        <dd>
+          {data.battingStyle?.replace("_", "-")} · {(data.bowlingStyle ?? "NONE").replace(/_/g, " ")}
+        </dd>
       </dl>
 
       <div className="rounded-sm border border-border bg-canvas p-3 text-sm">
         <p className="font-medium text-text-primary">What happens next</p>
         <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs text-text-secondary">
           <li>An admin reviews your profile — this usually takes a day or two.</li>
-          <li>Your cricket role, batting/bowling style, and experience level are assigned by the admin, not by you.</li>
+          <li>An admin assigns your player type (e.g. Super Striker, All-Rounder); everything else here is yours to edit anytime from your dashboard.</li>
           <li>Once approved, you'll get a WhatsApp confirmation with your permanent Player ID and digital player card.</li>
         </ul>
       </div>

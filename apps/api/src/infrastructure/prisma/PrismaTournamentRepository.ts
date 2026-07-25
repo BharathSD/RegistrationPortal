@@ -79,4 +79,26 @@ export class PrismaTournamentRepository implements TournamentRepository {
       where: { tournamentId: id, status: { in: ["CONFIRMED", "CHECKED_IN"] } },
     });
   }
+
+  async remove(id: string): Promise<void> {
+    await this.db.$transaction(async (tx) => {
+      const registrations = await tx.registration.findMany({ where: { tournamentId: id }, select: { id: true } });
+      const registrationIds = registrations.map((r) => r.id);
+      if (registrationIds.length > 0) {
+        await tx.payment.deleteMany({ where: { registrationId: { in: registrationIds } } });
+      }
+      await tx.checkin.deleteMany({ where: { tournamentId: id } });
+      await tx.playerStat.deleteMany({ where: { tournamentId: id } });
+
+      const campaigns = await tx.messageCampaign.findMany({ where: { tournamentId: id }, select: { id: true } });
+      const campaignIds = campaigns.map((c) => c.id);
+      if (campaignIds.length > 0) {
+        await tx.messageLog.deleteMany({ where: { campaignId: { in: campaignIds } } });
+        await tx.messageCampaign.deleteMany({ where: { id: { in: campaignIds } } });
+      }
+
+      await tx.registration.deleteMany({ where: { tournamentId: id } });
+      await tx.tournament.delete({ where: { id } });
+    });
+  }
 }

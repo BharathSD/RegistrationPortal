@@ -86,7 +86,7 @@ Steps: **1** Mobile+OTP → **2** Personal info + photo → **3** Cricket profil
 ├─────────────────────────────┤
 │ ┌─────────────────────────┐ │
 │ │  DIGITAL PLAYER CARD    │ │  <- gradient card, tap to flip → QR
-│ │  Photo   CKT-KA-26-000187│ │
+│ │  Photo   AVI-000187│ │
 │ │  Rohan Sharma  ✅Verified│ │
 │ └─────────────────────────┘ │
 ├─────────────────────────────┤
@@ -107,7 +107,7 @@ Steps: **1** Mobile+OTP → **2** Personal info + photo → **3** Cricket profil
 │  Enter Mobile → OTP (reuse)  │
 ├─────────────────────────────┤
 │  Welcome back, Rohan Sharma  │  <- fetched, read-only profile summary
-│  CKT-KA-26-000187 · Verified │
+│  AVI-000187 · Verified │
 ├─────────────────────────────┤
 │  Select Tournament            │
 │  [Summer T20 Cup      ▾]     │
@@ -150,7 +150,7 @@ Steps: **1** Mobile+OTP → **2** Personal info + photo → **3** Cricket profil
 │  Jersey: L, #7 / #11, "R. SHARMA"            │
 │  Medical (admin-only): O+, none                │
 │  ⚠ Duplicate signal: emergency contact reused │
-│    in profile CKT-KA-25-000041 (View →)       │
+│    in profile AVI-000041 (View →)       │
 ├───────────────────────────────────────────┤
 │ [ Approve → issues Player ID ]  [ Reject ]   │
 │ [ Request changes: ___________ ] [ Send ]    │
@@ -195,7 +195,7 @@ Steps: **1** Mobile+OTP → **2** Personal info + photo → **3** Cricket profil
 FRONT                         BACK
 ┌───────────────────┐        ┌───────────────────┐
 │ STADIUM GRADIENT   │        │  [ QR CODE ]        │
-│  ┌────┐  CKT-KA-26  │  tap  │                     │
+│  ┌────┐  AVI-000187  │  tap  │                     │
 │  │photo│  -000187   │  ↻   │  Emergency:          │
 │  └────┘             │        │  Meena Sharma        │
 │  Rohan Sharma        │        │  +91 98••••••20      │

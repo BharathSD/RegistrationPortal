@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { Download } from "lucide-react";
-import { Button, Card, Skeleton } from "../../../design-system";
+import { useSearchParams } from "react-router-dom";
+import { Download, Pencil, Trash2, User } from "lucide-react";
+import { Button, Card, Modal, Skeleton } from "../../../design-system";
 import { Input, Select } from "../../../design-system/components/Field";
 import { StatusBadge } from "../../../design-system/components/Badge";
-import { useAdminPlayers } from "../../../lib/api/admin";
+import { useToast } from "../../../design-system/components/Toast";
+import { ApiError } from "../../../lib/api/client";
+import { useAdminPlayerDetail, useAdminPlayers, useDeletePlayer } from "../../../lib/api/admin";
+import { PlayerTypeEditor } from "../shared/PlayerTypeEditor";
 import type { VerificationStatus } from "@cricket-platform/shared";
 
 const STATUS_OPTIONS: Array<{ value: VerificationStatus | ""; label: string }> = [
@@ -29,11 +33,26 @@ function exportToCsv(rows: Array<Record<string, string | number | null>>) {
 }
 
 export function PlayerSearchPage() {
+  // Supports deep-linking a search from elsewhere in the admin (e.g. "View in Player Search" from a duplicate flag) via ?q=.
+  const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<VerificationStatus | "">("");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [city, setCity] = useState("");
 
   const { data, isLoading } = useAdminPlayers({ status: status || undefined, q: q || undefined, city: city || undefined, page: 1, pageSize: 100 });
+  const deletePlayer = useDeletePlayer();
+  const toast = useToast();
+  const [editPlayerId, setEditPlayerId] = useState<string | null>(null);
+
+  async function handleDelete(id: string, name: string) {
+    if (!window.confirm(`Remove ${name} from the platform? Their profile will no longer be searchable or able to log in. This cannot be undone.`)) return;
+    try {
+      await deletePlayer.mutateAsync(id);
+      toast.success(`${name} removed.`);
+    } catch (err) {
+      if (err instanceof ApiError) toast.error(err.message);
+    }
+  }
 
   return (
     <div>
@@ -82,8 +101,9 @@ export function PlayerSearchPage() {
               <th className="p-3">Name</th>
               <th className="p-3">Mobile</th>
               <th className="p-3">Location</th>
-              <th className="p-3">Role</th>
+              <th className="p-3">Player Type</th>
               <th className="p-3">Status</th>
+              <th className="p-3" />
             </tr>
           </thead>
           <tbody>
@@ -99,6 +119,20 @@ export function PlayerSearchPage() {
                 <td className="p-3">
                   <StatusBadge status={p.verificationStatus} />
                 </td>
+                <td className="p-3 text-right">
+                  <Button size="sm" variant="ghost" aria-label={`Edit ${p.fullName}`} onClick={() => setEditPlayerId(p.id)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Remove ${p.fullName}`}
+                    loading={deletePlayer.isPending}
+                    onClick={() => handleDelete(p.id, p.fullName)}
+                  >
+                    <Trash2 className="h-4 w-4 text-danger" />
+                  </Button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -108,6 +142,44 @@ export function PlayerSearchPage() {
         )}
       </Card>
       {data && <p className="mt-2 text-xs text-text-secondary">{data.total} total players match this filter.</p>}
+
+      {editPlayerId && <PlayerEditModal playerId={editPlayerId} onClose={() => setEditPlayerId(null)} />}
     </div>
+  );
+}
+
+/** Reassign a player's type (and the rest of their cricket profile) any time after registration — not just from the Verification Queue. */
+function PlayerEditModal({ playerId, onClose }: { playerId: string; onClose: () => void }) {
+  const { data: player, isLoading } = useAdminPlayerDetail(playerId);
+
+  return (
+    <Modal open onClose={onClose} title={player?.fullName ?? "Edit player"}>
+      {isLoading || !player ? (
+        <Skeleton className="h-48" />
+      ) : (
+        <div className="flex flex-col gap-4">
+          {player.photoUrl ? (
+            <img
+              src={player.photoUrl}
+              alt={`${player.fullName}'s profile photo`}
+              className="h-24 w-24 self-center rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-24 w-24 items-center justify-center self-center rounded-full bg-canvas text-text-secondary">
+              <User className="h-10 w-10" />
+            </div>
+          )}
+          <dl className="grid grid-cols-2 gap-y-1.5 text-sm">
+            <dt className="text-text-secondary">Mobile</dt>
+            <dd>{player.mobile}</dd>
+            <dt className="text-text-secondary">Status</dt>
+            <dd>
+              <StatusBadge status={player.verificationStatus} />
+            </dd>
+          </dl>
+          <PlayerTypeEditor player={player} />
+        </div>
+      )}
+    </Modal>
   );
 }

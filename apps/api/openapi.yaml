@@ -579,7 +579,7 @@ components:
         cricketRole:
           type: string
           nullable: true
-          enum: [BATTER, BOWLER, ALL_ROUNDER, WICKET_KEEPER]
+          enum: [SUPER_STRIKER, ALL_ROUNDER, BATSMAN, BOWLER]
           description: Not set by the player — assigned by an admin via PATCH /admin/players/{playerId}/cricket-profile.
         battingStyle: { type: string, nullable: true, enum: [RIGHT_HAND, LEFT_HAND] }
         bowlingStyle:
@@ -614,7 +614,7 @@ components:
       type: object
       required: [cricketRole, battingStyle, preferredBattingPosition, experienceLevel]
       properties:
-        cricketRole: { type: string, enum: [BATTER, BOWLER, ALL_ROUNDER, WICKET_KEEPER] }
+        cricketRole: { type: string, enum: [SUPER_STRIKER, ALL_ROUNDER, BATSMAN, BOWLER] }
         battingStyle: { type: string, enum: [RIGHT_HAND, LEFT_HAND] }
         bowlingStyle:
           type: string

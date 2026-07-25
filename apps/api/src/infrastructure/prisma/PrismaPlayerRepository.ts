@@ -15,12 +15,12 @@ export class PrismaPlayerRepository implements PlayerRepository {
 
   async findById(id: string): Promise<PlayerWithMedical | null> {
     const player = await this.db.player.findUnique({ where: { id }, include: includeMedical });
-    return player ? toDomainPlayer(player) : null;
+    return player && !player.deletedAt ? toDomainPlayer(player) : null;
   }
 
   async findByMobile(mobile: string): Promise<PlayerWithMedical | null> {
     const player = await this.db.player.findUnique({ where: { mobile }, include: includeMedical });
-    return player ? toDomainPlayer(player) : null;
+    return player && !player.deletedAt ? toDomainPlayer(player) : null;
   }
 
   async findByPlayerId(playerId: string): Promise<PlayerWithMedical | null> {
@@ -183,11 +183,8 @@ export class PrismaPlayerRepository implements PlayerRepository {
     };
   }
 
-  async countApprovedInStateForYear(stateCode: string, year: number): Promise<number> {
-    const yy = String(year % 100).padStart(2, "0");
-    return this.db.player.count({
-      where: { playerId: { startsWith: `CKT-${stateCode}-${yy}-` } },
-    });
+  async countApproved(): Promise<number> {
+    return this.db.player.count({ where: { playerId: { not: null } } });
   }
 
   async findPotentialDuplicates(player: PlayerWithMedical): Promise<PlayerWithMedical[]> {
@@ -202,12 +199,21 @@ export class PrismaPlayerRepository implements PlayerRepository {
               { dateOfBirth: new Date(player.dateOfBirth) },
             ],
           },
-          { emergencyContactPhone: player.emergencyContactPhone },
+          // Two players with NO emergency contact on file aren't "sharing"
+          // anything — only flag an actual reused phone number, never a
+          // shared absence of one (a bare equals here would match every
+          // player against every other player who also left it blank).
+          ...(player.emergencyContactPhone ? [{ emergencyContactPhone: player.emergencyContactPhone }] : []),
         ],
       },
       include: includeMedical,
       take: 10,
     });
     return matches.map(toDomainPlayer);
+  }
+
+
+  async softDelete(id: string): Promise<void> {
+    await this.db.player.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 }

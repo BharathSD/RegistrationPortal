@@ -4,7 +4,6 @@ import type { AuditLogRepository } from "../../domain/repositories/AuditLogRepos
 import type { WhatsAppProvider } from "../../domain/ports/providers";
 import type { PlayerWithMedical } from "../../domain/entities";
 import { ConflictError, NotFoundError } from "../../domain/errors/DomainError";
-import { stateCodeFromName } from "./stateCode";
 
 export interface ApprovePlayerDeps {
   playerRepo: PlayerRepository;
@@ -19,11 +18,12 @@ export function makeApprovePlayerUseCase({ playerRepo, auditLogRepo, whatsAppPro
     if (player.verificationStatus !== "PENDING_VERIFICATION" && player.verificationStatus !== "CHANGES_REQUESTED") {
       throw new ConflictError(`Cannot approve a player in status ${player.verificationStatus}`);
     }
+    if (!player.cricketRole) {
+      throw new ConflictError("Assign a player type (Super Striker, All-Rounder, Batsman, or Bowler) before approving");
+    }
 
-    const stateCode = stateCodeFromName(player.state);
-    const year = new Date().getFullYear();
-    const sequence = (await playerRepo.countApprovedInStateForYear(stateCode, year)) + 1;
-    const newPlayerId = buildPlayerId(stateCode, year, sequence);
+    const sequence = (await playerRepo.countApproved()) + 1;
+    const newPlayerId = buildPlayerId(sequence);
 
     const updated = await playerRepo.assignPlayerId(player.id, newPlayerId, adminId);
 

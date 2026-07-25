@@ -27,14 +27,14 @@ erDiagram
 
     PLAYER {
         uuid id PK
-        string player_id UK "e.g. CKT-KA-26-000187, null until verified"
+        string player_id UK "e.g. AVI-000187, null until verified"
         string mobile UK "E.164, OTP-verified"
         string full_name
         date date_of_birth
         string gender
         string email
         string photo_url
-        enum cricket_role "BATTER|BOWLER|ALL_ROUNDER|WICKET_KEEPER"
+        enum cricket_role "SUPER_STRIKER|ALL_ROUNDER|BATSMAN|BOWLER"
         enum batting_style "RIGHT_HAND|LEFT_HAND"
         enum bowling_style "RIGHT_ARM_FAST|RIGHT_ARM_SPIN|LEFT_ARM_FAST|LEFT_ARM_SPIN|NONE"
         int preferred_batting_position

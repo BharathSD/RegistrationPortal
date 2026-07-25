@@ -11,7 +11,7 @@ export function communicationsRoutes(useCases: CommunicationsUseCases): Router {
   const router = Router();
   const controller = makeCommunicationsController(useCases);
 
-  router.use(authenticate, requireAdmin, requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"));
+  router.use(authenticate, requireAdmin, requireRole("ADMIN"));
 
   router.post("/campaigns", validateRequest(createCampaignSchema), asyncHandler(controller.create));
   router.get("/campaigns", asyncHandler(controller.list));

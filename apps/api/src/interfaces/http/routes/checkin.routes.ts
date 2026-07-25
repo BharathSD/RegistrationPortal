@@ -11,7 +11,7 @@ export function checkinRoutes(useCases: CheckinUseCases): Router {
   const router = Router();
   const controller = makeCheckinController(useCases);
 
-  router.use(authenticate, requireAdmin, requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN", "SCANNER"));
+  router.use(authenticate, requireAdmin, requireRole("ADMIN", "SCANNER"));
 
   router.post("/scan", validateRequest(checkinScanSchema), asyncHandler(controller.scan));
   router.get("/:tournamentId/roster", asyncHandler(controller.roster));

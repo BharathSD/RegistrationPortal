@@ -21,3 +21,17 @@ export interface DuplicateFlagCandidate {
   status: "OPEN" | "DISMISSED" | "CONFIRMED_MERGED";
   createdAt: string;
 }
+
+export interface DuplicateFlagPlayerSummary {
+  id: string;
+  fullName: string;
+  mobile: string;
+  playerId: string | null;
+  verificationStatus: string;
+}
+
+/** What the admin duplicate-review list actually needs to render — the flag plus who the two players are, not just their ids. */
+export interface DuplicateFlagWithPlayers extends DuplicateFlagCandidate {
+  player: DuplicateFlagPlayerSummary;
+  suspectedDuplicatePlayer: DuplicateFlagPlayerSummary;
+}

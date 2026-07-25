@@ -32,6 +32,9 @@ export interface PlayerRepository {
   ): Promise<PlayerWithMedical>;
   assignPlayerId(id: string, playerId: string, verifiedByAdminId: string): Promise<PlayerWithMedical>;
   search(filters: PlayerSearchFilters): Promise<PaginatedResult<PlayerWithMedical>>;
-  countApprovedInStateForYear(stateCode: string, year: number): Promise<number>;
+  /** Total players ever issued a Player ID — the base for the next global sequence number. */
+  countApproved(): Promise<number>;
   findPotentialDuplicates(player: PlayerWithMedical): Promise<PlayerWithMedical[]>;
+  /** Soft-deletes the player (sets deletedAt) — they stop appearing in search/lookups but the row is kept for audit/history. */
+  softDelete(id: string): Promise<void>;
 }

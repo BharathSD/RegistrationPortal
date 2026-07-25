@@ -5,7 +5,7 @@
  * components iterate over for <RadioCardGroup> options.
  */
 
-export const CRICKET_ROLES = ["BATTER", "BOWLER", "ALL_ROUNDER", "WICKET_KEEPER"] as const;
+export const CRICKET_ROLES = ["SUPER_STRIKER", "ALL_ROUNDER", "BATSMAN", "BOWLER"] as const;
 export type CricketRole = (typeof CRICKET_ROLES)[number];
 
 export const BATTING_STYLES = ["RIGHT_HAND", "LEFT_HAND"] as const;
@@ -59,7 +59,7 @@ export type TournamentStatus = (typeof TOURNAMENT_STATUSES)[number];
 export const PAYMENT_STATUSES = ["CREATED", "SUCCEEDED", "FAILED", "REFUNDED"] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const ADMIN_ROLES = ["SUPER_ADMIN", "TOURNAMENT_ADMIN", "SCANNER"] as const;
+export const ADMIN_ROLES = ["ADMIN", "SCANNER"] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
 export const OTP_PURPOSES = ["REGISTRATION", "LOGIN", "TOURNAMENT_ENTRY"] as const;
@@ -78,16 +78,16 @@ export type DuplicateSignal = (typeof DUPLICATE_SIGNALS)[number];
 export const DUPLICATE_FLAG_STATUSES = ["OPEN", "DISMISSED", "CONFIRMED_MERGED"] as const;
 export type DuplicateFlagStatus = (typeof DUPLICATE_FLAG_STATUSES)[number];
 
-/** Every role that is allowed to authenticate through the admin portal. */
+/**
+ * Every role that is allowed to authenticate through the admin portal.
+ * There is exactly one tier of full access (ADMIN) — a prior SUPER_ADMIN /
+ * TOURNAMENT_ADMIN split existed in name only (no route ever required one
+ * without the other) and was merged away. SCANNER remains the one genuinely
+ * restricted role, for match-day gate volunteers who should only ever be
+ * able to scan a QR code — not see medical data, verify players, or send
+ * bulk messages.
+ */
 export const ADMIN_PERMISSIONS: Record<AdminRole, string[]> = {
-  SUPER_ADMIN: ["*"],
-  TOURNAMENT_ADMIN: [
-    "players:read",
-    "players:verify",
-    "tournaments:manage",
-    "communications:send",
-    "checkin:scan",
-    "stats:manage",
-  ],
+  ADMIN: ["*"],
   SCANNER: ["checkin:scan", "checkin:read"],
 };

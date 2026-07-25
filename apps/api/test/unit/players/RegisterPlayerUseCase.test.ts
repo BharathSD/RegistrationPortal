@@ -43,4 +43,13 @@ describe("RegisterPlayerUseCase", () => {
 
     await expect(registerPlayer("+919876543220", PROFILE)).rejects.toBeInstanceOf(ConflictError);
   });
+
+  it("allows two different players to share the same name and date of birth, as long as the mobile numbers differ", async () => {
+    const playerRepo = new InMemoryPlayerRepository();
+    const registerPlayer = makeRegisterPlayerUseCase({ playerRepo });
+    await registerPlayer("+919876543220", PROFILE);
+
+    const second = registerPlayer("+919876543299", { ...PROFILE, fullName: "ANANYA RAO" });
+    await expect(second).resolves.toMatchObject({ fullName: "ANANYA RAO", mobile: "+919876543299" });
+  });
 });

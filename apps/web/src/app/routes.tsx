@@ -13,6 +13,7 @@ import { AdminOverviewPage } from "../features/admin/analytics/AdminOverviewPage
 import { AdminAnalyticsPage } from "../features/admin/analytics/AdminAnalyticsPage";
 import { VerificationQueuePage } from "../features/admin/verification-queue/VerificationQueuePage";
 import { PlayerSearchPage } from "../features/admin/player-search/PlayerSearchPage";
+import { DuplicateFlagsPage } from "../features/admin/duplicate-flags/DuplicateFlagsPage";
 import { BulkMessagingPage } from "../features/admin/bulk-messaging/BulkMessagingPage";
 import { TournamentManagementPage } from "../features/admin/tournament-management/TournamentManagementPage";
 import { QrCheckinPage } from "../features/admin/qr-checkin/QrCheckinPage";
@@ -49,7 +50,7 @@ export function AppRoutes() {
       <Route
         path="/admin/verification"
         element={
-          <RequireAdmin roles={["SUPER_ADMIN", "TOURNAMENT_ADMIN"]}>
+          <RequireAdmin roles={["ADMIN"]}>
             <AdminShell>
               <VerificationQueuePage />
             </AdminShell>
@@ -59,7 +60,7 @@ export function AppRoutes() {
       <Route
         path="/admin/players"
         element={
-          <RequireAdmin roles={["SUPER_ADMIN", "TOURNAMENT_ADMIN"]}>
+          <RequireAdmin roles={["ADMIN"]}>
             <AdminShell>
               <PlayerSearchPage />
             </AdminShell>
@@ -67,9 +68,19 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/admin/duplicates"
+        element={
+          <RequireAdmin roles={["ADMIN"]}>
+            <AdminShell>
+              <DuplicateFlagsPage />
+            </AdminShell>
+          </RequireAdmin>
+        }
+      />
+      <Route
         path="/admin/messaging"
         element={
-          <RequireAdmin roles={["SUPER_ADMIN", "TOURNAMENT_ADMIN"]}>
+          <RequireAdmin roles={["ADMIN"]}>
             <AdminShell>
               <BulkMessagingPage />
             </AdminShell>
@@ -79,7 +90,7 @@ export function AppRoutes() {
       <Route
         path="/admin/tournaments"
         element={
-          <RequireAdmin roles={["SUPER_ADMIN", "TOURNAMENT_ADMIN"]}>
+          <RequireAdmin roles={["ADMIN"]}>
             <AdminShell>
               <TournamentManagementPage />
             </AdminShell>
@@ -89,7 +100,7 @@ export function AppRoutes() {
       <Route
         path="/admin/checkin"
         element={
-          <RequireAdmin roles={["SUPER_ADMIN", "TOURNAMENT_ADMIN", "SCANNER"]}>
+          <RequireAdmin roles={["ADMIN", "SCANNER"]}>
             <AdminShell>
               <QrCheckinPage />
             </AdminShell>
@@ -99,7 +110,7 @@ export function AppRoutes() {
       <Route
         path="/admin/analytics"
         element={
-          <RequireAdmin roles={["SUPER_ADMIN", "TOURNAMENT_ADMIN"]}>
+          <RequireAdmin roles={["ADMIN"]}>
             <AdminShell>
               <AdminAnalyticsPage />
             </AdminShell>

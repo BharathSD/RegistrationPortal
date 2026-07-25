@@ -95,9 +95,8 @@ export class InMemoryPlayerRepository implements PlayerRepository {
     return { items, page: filters.page, pageSize: filters.pageSize, total: items.length };
   }
 
-  async countApprovedInStateForYear(stateCode: string, year: number): Promise<number> {
-    const yy = String(year % 100).padStart(2, "0");
-    return this.players.filter((p) => p.playerId?.startsWith(`CKT-${stateCode}-${yy}-`)).length;
+  async countApproved(): Promise<number> {
+    return this.players.filter((p) => p.playerId != null).length;
   }
 
   async findPotentialDuplicates(player: PlayerWithMedical): Promise<PlayerWithMedical[]> {
@@ -108,4 +107,5 @@ export class InMemoryPlayerRepository implements PlayerRepository {
           p.emergencyContactPhone === player.emergencyContactPhone),
     );
   }
+
 }

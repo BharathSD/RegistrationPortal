@@ -41,13 +41,13 @@ describe("Player registration -> verification -> tournament registration", () =>
 
   beforeAll(async () => {
     if (!dbAvailable) return;
-    adminEmail = `test-admin-${crypto.randomUUID()}@cricket-platform.dev`;
+    adminEmail = `test-admin-${crypto.randomUUID()}@aviyukthas.com`;
     const admin = await prisma.adminUser.create({
       data: {
         email: adminEmail,
         passwordHash: await bcrypt.hash("Test@12345", 10),
         fullName: "Integration Test Admin",
-        role: "SUPER_ADMIN",
+        role: "ADMIN",
       },
     });
     adminId = admin.id;

@@ -13,6 +13,7 @@ export function makeRegisterPlayerUseCase({ playerRepo }: RegisterPlayerDeps) {
     if (existing) {
       throw new ConflictError("A player profile already exists for this mobile number");
     }
+
     return playerRepo.create({ ...profile, mobile });
   };
 }

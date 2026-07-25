@@ -5,11 +5,12 @@ import type { PlayerWithMedical } from "../../domain/entities";
 import { NotFoundError } from "../../domain/errors/DomainError";
 
 /**
- * A player never sets their own playing type — admins assign it after
- * reviewing them (batting/bowling style, role, position, experience are all
- * things an admin can judge better than a self-reported form field, and it
- * keeps the registration wizard short). Callable independently of
- * approve/reject so an admin can assign or revise it at any point.
+ * A player never sets their own player type — an admin assigns it while
+ * reviewing them, since it's a judgment call (which tier they slot into),
+ * not a self-reported fact. Everything else about how they play (batting/
+ * bowling style, position, experience) is the player's own and self-edited
+ * from their dashboard. Callable independently of approve/reject so an
+ * admin can assign or reassign the type at any point.
  */
 export function makeAssignCricketProfileUseCase({
   playerRepo,
@@ -30,17 +31,11 @@ export function makeAssignCricketProfileUseCase({
 
     await auditLogRepo.record({
       actorAdminId: adminId,
-      action: "CRICKET_PROFILE_ASSIGNED",
+      action: "PLAYER_TYPE_ASSIGNED",
       entityType: "Player",
       entityId: playerId,
-      before: {
-        cricketRole: player.cricketRole,
-        battingStyle: player.battingStyle,
-        bowlingStyle: player.bowlingStyle,
-        preferredBattingPosition: player.preferredBattingPosition,
-        experienceLevel: player.experienceLevel,
-      },
-      after: input,
+      before: { cricketRole: player.cricketRole },
+      after: { cricketRole: input.cricketRole },
     });
 
     return updated;

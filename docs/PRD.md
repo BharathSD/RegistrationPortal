@@ -91,7 +91,7 @@ Grassroots and semi-pro cricket tournaments today each run their own registratio
 
 ## 8. Player ID Format
 
-`CKT-<STATE_CODE>-<YY>-<SEQ6>` e.g. `CKT-KA-26-000master187` → concretely `CKT-KA-26-000187`. Immutable, globally unique, generated only at approval time (never at registration time), so rejected/abandoned registrations never burn an ID.
+`AVI-<SEQ6>` e.g. `AVI-000187`. A single global sequence, immutable, generated only at approval time (never at registration time), so rejected/abandoned registrations never burn an ID.
 
 ## 9. Non-Functional Requirements
 

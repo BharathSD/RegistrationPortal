@@ -9,35 +9,23 @@ async function main() {
   console.log("🌱 Seeding database...");
 
   const passwordHash = await bcrypt.hash("Admin@12345", 10);
-  const superAdmin = await prisma.adminUser.upsert({
-    where: { email: "admin@cricket-platform.dev" },
+  const admin = await prisma.adminUser.upsert({
+    where: { email: "admin@aviyukthas.com" },
     update: {},
     create: {
-      email: "admin@cricket-platform.dev",
+      email: "admin@aviyukthas.com",
       passwordHash,
-      fullName: "Platform Super Admin",
-      role: "SUPER_ADMIN",
-    },
-  });
-
-  const organizerHash = await bcrypt.hash("Organizer@12345", 10);
-  const organizer = await prisma.adminUser.upsert({
-    where: { email: "organizer@cricket-platform.dev" },
-    update: {},
-    create: {
-      email: "organizer@cricket-platform.dev",
-      passwordHash: organizerHash,
-      fullName: "Tournament Organizer",
-      role: "TOURNAMENT_ADMIN",
+      fullName: "Aviyukthas Admin",
+      role: "ADMIN",
     },
   });
 
   const scannerHash = await bcrypt.hash("Scanner@12345", 10);
   await prisma.adminUser.upsert({
-    where: { email: "scanner@cricket-platform.dev" },
+    where: { email: "scanner@aviyukthas.com" },
     update: {},
     create: {
-      email: "scanner@cricket-platform.dev",
+      email: "scanner@aviyukthas.com",
       passwordHash: scannerHash,
       fullName: "Gate Volunteer",
       role: "SCANNER",
@@ -50,7 +38,7 @@ async function main() {
       fullName: "Rohan Sharma",
       dateOfBirth: new Date("1998-04-12"),
       gender: "MALE" as const,
-      cricketRole: "BATTER" as const,
+      cricketRole: "BATSMAN" as const,
       battingStyle: "RIGHT_HAND" as const,
       bowlingStyle: "NONE" as const,
       preferredBattingPosition: 3,
@@ -66,7 +54,7 @@ async function main() {
       jerseySize: "L" as const,
       jerseyNumberPref1: "7",
       jerseyName: "R. SHARMA",
-      playerId: "CKT-KA-26-000001",
+      playerId: "AVI-000001",
     },
     {
       mobile: "+919876543220",
@@ -89,7 +77,7 @@ async function main() {
       jerseySize: "M" as const,
       jerseyNumberPref1: "23",
       jerseyName: "A. RAO",
-      playerId: "CKT-KA-26-000002",
+      playerId: "AVI-000002",
     },
     {
       mobile: "+919876543230",
@@ -127,7 +115,7 @@ async function main() {
         ...rest,
         playerId: playerId ?? undefined,
         verificationStatus: verificationStatus ?? "VERIFIED",
-        ...(playerId ? { verifiedByAdminId: superAdmin.id, verifiedAt: new Date() } : {}),
+        ...(playerId ? { verifiedByAdminId: admin.id, verifiedAt: new Date() } : {}),
       },
     });
     createdPlayers.push(player);
@@ -150,7 +138,7 @@ async function main() {
       feeRequired: true,
       rulesMarkdown: "## Rules\n1. Players must be 16+.\n2. Standard ICC playing conditions apply.\n3. Verified Player ID required at check-in.",
       status: "PUBLISHED",
-      createdByAdminId: organizer.id,
+      createdByAdminId: admin.id,
     },
   });
 
@@ -168,7 +156,7 @@ async function main() {
       registrationCloseAt: new Date("2026-11-20T23:59:59Z"),
       feeRequired: false,
       status: "DRAFT",
-      createdByAdminId: organizer.id,
+      createdByAdminId: admin.id,
     },
   });
 
@@ -189,9 +177,8 @@ async function main() {
   }
 
   console.log("✅ Seed complete:");
-  console.log("   Super admin:      admin@cricket-platform.dev / Admin@12345");
-  console.log("   Tournament admin:  organizer@cricket-platform.dev / Organizer@12345");
-  console.log("   Scanner:           scanner@cricket-platform.dev / Scanner@12345");
+  console.log("   Admin:    admin@aviyukthas.com / Admin@12345");
+  console.log("   Scanner:  scanner@aviyukthas.com / Scanner@12345");
   console.log(`   Verified players:  ${verifiedPlayers.length} (mobiles above), 1 pending verification`);
   console.log(`   Tournament:        ${tournament.name} (${tournament.slug})`);
 }

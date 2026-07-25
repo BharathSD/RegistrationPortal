@@ -52,6 +52,7 @@ import { makeAssignCricketProfileUseCase } from "./application/admin/AssignCrick
 import { makeDetectDuplicatesUseCase } from "./application/admin/DetectDuplicatesUseCase";
 import { makeListDuplicateFlagsUseCase } from "./application/admin/ListDuplicateFlagsUseCase";
 import { makeResolveDuplicateFlagUseCase } from "./application/admin/ResolveDuplicateFlagUseCase";
+import { makeDeletePlayerUseCase } from "./application/admin/DeletePlayerUseCase";
 
 import { makeCreateTournamentUseCase } from "./application/tournaments/CreateTournamentUseCase";
 import { makeListTournamentsUseCase } from "./application/tournaments/ListTournamentsUseCase";
@@ -59,11 +60,13 @@ import { makeGetTournamentUseCase } from "./application/tournaments/GetTournamen
 import { makeUpdateTournamentUseCase } from "./application/tournaments/UpdateTournamentUseCase";
 import { makePublishTournamentUseCase } from "./application/tournaments/PublishTournamentUseCase";
 import { makeGetRosterUseCase } from "./application/tournaments/GetRosterUseCase";
+import { makeDeleteTournamentUseCase } from "./application/tournaments/DeleteTournamentUseCase";
 
 import { makeRegisterForTournamentUseCase } from "./application/registrations/RegisterForTournamentUseCase";
 import { makeCreatePaymentOrderUseCase } from "./application/registrations/CreatePaymentOrderUseCase";
 import { makeCancelRegistrationUseCase } from "./application/registrations/CancelRegistrationUseCase";
 import { makeListMyRegistrationsUseCase } from "./application/registrations/ListMyRegistrationsUseCase";
+import { makeRemoveRegistrationUseCase } from "./application/registrations/RemoveRegistrationUseCase";
 
 import { makeCreateCampaignUseCase } from "./application/communications/CreateCampaignUseCase";
 import { makeListCampaignsUseCase } from "./application/communications/ListCampaignsUseCase";
@@ -164,6 +167,7 @@ export function createApp(): Express {
     assignCricketProfile: makeAssignCricketProfileUseCase({ playerRepo, auditLogRepo }),
     listDuplicateFlags: makeListDuplicateFlagsUseCase({ duplicateFlagRepo }),
     resolveDuplicateFlag: makeResolveDuplicateFlagUseCase({ duplicateFlagRepo, auditLogRepo }),
+    deletePlayer: makeDeletePlayerUseCase({ playerRepo }),
   };
 
   const tournamentsUseCases = {
@@ -173,6 +177,8 @@ export function createApp(): Express {
     updateTournament: makeUpdateTournamentUseCase({ tournamentRepo }),
     publishTournament: makePublishTournamentUseCase({ tournamentRepo }),
     getRoster: makeGetRosterUseCase({ registrationRepo }),
+    deleteTournament: makeDeleteTournamentUseCase({ tournamentRepo }),
+    removeRegistration: makeRemoveRegistrationUseCase({ registrationRepo }),
   };
 
   const registrationsUseCases = {

@@ -1,21 +1,41 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
-import { Button, Card, Checkbox, Modal } from "../../../design-system";
-import { Input } from "../../../design-system/components/Field";
-import { StatusBadge } from "../../../design-system/components/Badge";
-import { useCreateTournament, usePublishTournament, useTournamentRoster, useTournaments } from "../../../lib/api/tournaments";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import type { Tournament } from "@cricket-platform/shared";
+import { Button, Card } from "../../../design-system";
+import { StatusBadge, TimeframeBadge } from "../../../design-system/components/Badge";
+import { useDeleteTournament, usePublishTournament, useTournaments } from "../../../lib/api/tournaments";
 import { useToast } from "../../../design-system/components/Toast";
 import { ApiError } from "../../../lib/api/client";
-import type { TournamentInput } from "@cricket-platform/shared";
+import { groupTournamentsByTimeframe, type TournamentTimeframe } from "../../../lib/tournamentTimeframe";
+import { TournamentFormModal } from "./TournamentFormModal";
+import { RosterModal } from "./RosterModal";
 
-const EMPTY_FORM: Partial<TournamentInput> = { feeRequired: false, entryFee: 0 };
+const SECTIONS: Array<{ key: TournamentTimeframe; heading: string }> = [
+  { key: "ONGOING", heading: "Ongoing" },
+  { key: "UPCOMING", heading: "Upcoming" },
+  { key: "PAST", heading: "Past" },
+];
 
 export function TournamentManagementPage() {
   const { data: tournaments, isLoading } = useTournaments();
   const [creating, setCreating] = useState(false);
+  const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [rosterTournamentId, setRosterTournamentId] = useState<string | null>(null);
   const publish = usePublishTournament();
+  const deleteTournament = useDeleteTournament();
   const toast = useToast();
+
+  async function handleDelete(id: string, name: string) {
+    if (!window.confirm(`Delete "${name}"? This permanently removes it and every registration for it. This cannot be undone.`)) return;
+    try {
+      await deleteTournament.mutateAsync(id);
+      toast.success(`${name} deleted.`);
+    } catch (err) {
+      if (err instanceof ApiError) toast.error(err.message);
+    }
+  }
+
+  const grouped = groupTournamentsByTimeframe(tournaments ?? []);
 
   return (
     <div>
@@ -28,133 +48,73 @@ export function TournamentManagementPage() {
 
       {isLoading && <p className="text-sm text-text-secondary">Loading...</p>}
 
-      <div className="flex flex-col gap-2">
-        {tournaments?.map((t) => (
-          <Card key={t.id} className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-medium">{t.name}</p>
-              <p className="text-xs text-text-secondary">
-                {t.venue} · {new Date(t.startDate).toLocaleDateString()}
-              </p>
+      {!isLoading && tournaments?.length === 0 && (
+        <Card className="text-center text-sm text-text-secondary">
+          No tournaments yet — create your first one to start accepting registrations.
+        </Card>
+      )}
+
+      {!isLoading &&
+        SECTIONS.filter((s) => grouped[s.key].length > 0).map((section) => (
+          <div key={section.key} className="mb-6">
+            <h2 className="mb-2 font-display text-sm font-semibold uppercase tracking-wide text-text-secondary">
+              {section.heading} ({grouped[section.key].length})
+            </h2>
+            <div className="flex flex-col gap-2">
+              {grouped[section.key].map((t: Tournament) => (
+                <Card key={t.id} className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{t.name}</p>
+                    <p className="text-xs text-text-secondary">
+                      {t.venue} · {new Date(t.startDate).toLocaleDateString()} – {new Date(t.endDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <TimeframeBadge timeframe={section.key} />
+                    <StatusBadge status={t.status} />
+                    <Button size="sm" variant="secondary" onClick={() => setRosterTournamentId(t.id)}>
+                      Roster
+                    </Button>
+                    <Button size="sm" variant="ghost" aria-label={`Edit ${t.name}`} onClick={() => setEditingTournament(t)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    {t.status === "DRAFT" && (
+                      <Button
+                        size="sm"
+                        loading={publish.isPending}
+                        onClick={async () => {
+                          try {
+                            await publish.mutateAsync(t.id);
+                            toast.success("Tournament published.");
+                          } catch (err) {
+                            if (err instanceof ApiError) toast.error(err.message);
+                          }
+                        }}
+                      >
+                        Publish
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Delete ${t.name}`}
+                      loading={deleteTournament.isPending}
+                      onClick={() => handleDelete(t.id, t.name)}
+                    >
+                      <Trash2 className="h-4 w-4 text-danger" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
             </div>
-            <div className="flex items-center gap-2">
-              <StatusBadge status={t.status} />
-              <Button size="sm" variant="secondary" onClick={() => setRosterTournamentId(t.id)}>
-                Roster
-              </Button>
-              {t.status === "DRAFT" && (
-                <Button
-                  size="sm"
-                  loading={publish.isPending}
-                  onClick={async () => {
-                    try {
-                      await publish.mutateAsync(t.id);
-                      toast.success("Tournament published.");
-                    } catch (err) {
-                      if (err instanceof ApiError) toast.error(err.message);
-                    }
-                  }}
-                >
-                  Publish
-                </Button>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {creating && <CreateTournamentModal onClose={() => setCreating(false)} />}
-      {rosterTournamentId && <RosterModal tournamentId={rosterTournamentId} onClose={() => setRosterTournamentId(null)} />}
-    </div>
-  );
-}
-
-function CreateTournamentModal({ onClose }: { onClose: () => void }) {
-  const [form, setForm] = useState<Partial<TournamentInput>>(EMPTY_FORM);
-  const createTournament = useCreateTournament();
-  const toast = useToast();
-
-  function update<K extends keyof TournamentInput>(key: K, value: TournamentInput[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  async function handleCreate() {
-    try {
-      await createTournament.mutateAsync(form as TournamentInput);
-      toast.success("Tournament created as a draft.");
-      onClose();
-    } catch (err) {
-      if (err instanceof ApiError) toast.error(err.message);
-    }
-  }
-
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title="New tournament"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button loading={createTournament.isPending} onClick={handleCreate}>
-            Create draft
-          </Button>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-3">
-        <Input label="Name" required value={form.name ?? ""} onChange={(e) => update("name", e.target.value)} />
-        <Input label="Venue" required value={form.venue ?? ""} onChange={(e) => update("venue", e.target.value)} />
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Start date" required type="date" onChange={(e) => update("startDate", e.target.value as unknown as Date)} />
-          <Input label="End date" required type="date" onChange={(e) => update("endDate", e.target.value as unknown as Date)} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Registration opens"
-            required
-            type="datetime-local"
-            onChange={(e) => update("registrationOpenAt", e.target.value as unknown as Date)}
-          />
-          <Input
-            label="Registration closes"
-            required
-            type="datetime-local"
-            onChange={(e) => update("registrationCloseAt", e.target.value as unknown as Date)}
-          />
-        </div>
-        <Input label="Max participants" type="number" onChange={(e) => update("maxParticipants", Number(e.target.value))} />
-        <Checkbox
-          checked={Boolean(form.feeRequired)}
-          onChange={(checked) => update("feeRequired", checked)}
-          label="Charge an entry fee"
-        />
-        {form.feeRequired && (
-          <Input label="Entry fee (₹)" type="number" value={form.entryFee ?? 0} onChange={(e) => update("entryFee", Number(e.target.value))} />
-        )}
-      </div>
-    </Modal>
-  );
-}
-
-function RosterModal({ tournamentId, onClose }: { tournamentId: string; onClose: () => void }) {
-  const { data: roster, isLoading } = useTournamentRoster(tournamentId);
-  return (
-    <Modal open onClose={onClose} title="Tournament roster">
-      {isLoading && <p className="text-sm text-text-secondary">Loading...</p>}
-      <div className="flex flex-col gap-2">
-        {roster?.map((r) => (
-          <div key={r.id} className="flex items-center justify-between border-b border-border py-2 text-sm last:border-0">
-            <span>
-              {r.player.fullName} <span className="text-text-secondary">({r.player.playerId})</span>
-            </span>
-            <StatusBadge status={r.status} />
           </div>
         ))}
-        {!isLoading && roster?.length === 0 && <p className="text-sm text-text-secondary">No registrations yet.</p>}
-      </div>
-    </Modal>
+
+      {creating && <TournamentFormModal onClose={() => setCreating(false)} />}
+      {editingTournament && (
+        <TournamentFormModal tournament={editingTournament} onClose={() => setEditingTournament(null)} />
+      )}
+      {rosterTournamentId && <RosterModal tournamentId={rosterTournamentId} onClose={() => setRosterTournamentId(null)} />}
+    </div>
   );
 }

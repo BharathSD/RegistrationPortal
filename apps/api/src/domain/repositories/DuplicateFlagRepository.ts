@@ -1,4 +1,4 @@
-import type { DuplicateFlagCandidate } from "../entities";
+import type { DuplicateFlagCandidate, DuplicateFlagWithPlayers } from "../entities";
 import type { DuplicateSignal, DuplicateFlagStatus } from "@cricket-platform/shared";
 
 export interface DuplicateFlagRepository {
@@ -8,6 +8,6 @@ export interface DuplicateFlagRepository {
     signal: DuplicateSignal;
   }): Promise<DuplicateFlagCandidate>;
   existsOpenFlag(playerId: string, suspectedDuplicatePlayerId: string): Promise<boolean>;
-  listOpen(): Promise<DuplicateFlagCandidate[]>;
+  listOpen(): Promise<DuplicateFlagWithPlayers[]>;
   resolve(id: string, status: DuplicateFlagStatus): Promise<DuplicateFlagCandidate>;
 }

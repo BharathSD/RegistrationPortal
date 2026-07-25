@@ -9,14 +9,17 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
+  /** Set false for modals holding real in-progress form data (e.g. multi-field create/edit forms) — a stray click outside shouldn't silently discard it. Escape and the explicit close button still work either way. Defaults to true. */
+  closeOnBackdropClick?: boolean;
 }
 
 /**
  * One dialog component, two responsive presentations: a centered modal on
  * desktop, a bottom sheet on mobile (docs/DESIGN_SYSTEM.md #5). Traps focus
- * on open, restores it on close, and closes on Escape/backdrop click.
+ * on open, restores it on close, and closes on Escape/backdrop click
+ * (backdrop click can be turned off — see closeOnBackdropClick).
  */
-export function Modal({ open, onClose, title, children, footer }: ModalProps) {
+export function Modal({ open, onClose, title, children, footer, closeOnBackdropClick = true }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -44,7 +47,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={closeOnBackdropClick ? onClose : undefined}
             aria-hidden="true"
           />
           <motion.div

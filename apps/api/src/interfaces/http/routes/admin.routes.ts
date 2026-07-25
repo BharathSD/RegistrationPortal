@@ -19,7 +19,7 @@ export function adminRoutes(useCases: AdminUseCases): Router {
   const router = Router();
   const controller = makeAdminController(useCases);
 
-  router.use(authenticate, requireAdmin, requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"));
+  router.use(authenticate, requireAdmin, requireRole("ADMIN"));
 
   router.get("/players", validateRequest(playerSearchQuerySchema, "query"), asyncHandler(controller.searchPlayers));
   router.get("/players/:playerId", asyncHandler(controller.getPlayerDetail));
@@ -35,6 +35,7 @@ export function adminRoutes(useCases: AdminUseCases): Router {
     validateRequest(assignCricketProfileSchema),
     asyncHandler(controller.assignCricketProfile),
   );
+  router.delete("/players/:playerId", asyncHandler(controller.deletePlayer));
 
   router.get("/duplicates", asyncHandler(controller.listDuplicates));
   router.post(

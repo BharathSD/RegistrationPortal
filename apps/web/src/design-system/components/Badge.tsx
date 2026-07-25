@@ -61,3 +61,20 @@ const STATUS_LABEL: Record<string, string> = {
 export function StatusBadge({ status }: { status: string }) {
   return <Badge tone={STATUS_TONE[status] ?? "neutral"}>{STATUS_LABEL[status] ?? status.replace(/_/g, " ")}</Badge>;
 }
+
+const TIMEFRAME_TONE: Record<string, BadgeTone> = {
+  ONGOING: "success",
+  UPCOMING: "primary",
+  PAST: "neutral",
+};
+
+const TIMEFRAME_LABEL: Record<string, string> = {
+  ONGOING: "Ongoing",
+  UPCOMING: "Upcoming",
+  PAST: "Past",
+};
+
+/** Where a tournament sits relative to today — derived from its dates, distinct from its admin-set workflow status (StatusBadge). */
+export function TimeframeBadge({ timeframe }: { timeframe: "UPCOMING" | "ONGOING" | "PAST" }) {
+  return <Badge tone={TIMEFRAME_TONE[timeframe]}>{TIMEFRAME_LABEL[timeframe]}</Badge>;
+}

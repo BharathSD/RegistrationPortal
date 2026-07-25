@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { BarChart3, LayoutDashboard, LogOut, MessageSquare, ScanLine, ShieldCheck, Trophy, Users } from "lucide-react";
+import { BarChart3, Copy, LayoutDashboard, LogOut, MessageSquare, ScanLine, ShieldCheck, Trophy, Users } from "lucide-react";
 import clsx from "clsx";
 import { ThemeToggle } from "../../design-system";
 import { useAuthStore } from "../../lib/hooks/useAuthStore";
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/admin/verification", label: "Verification Queue", icon: ShieldCheck },
   { to: "/admin/players", label: "Players", icon: Users },
+  { to: "/admin/duplicates", label: "Duplicate Flags", icon: Copy },
   { to: "/admin/tournaments", label: "Tournaments", icon: Trophy },
   { to: "/admin/messaging", label: "Messaging", icon: MessageSquare },
   { to: "/admin/checkin", label: "Check-in", icon: ScanLine },

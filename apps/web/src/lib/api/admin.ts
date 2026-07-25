@@ -77,6 +77,22 @@ export function useAssignCricketProfile() {
   );
 }
 
+export function useDeletePlayer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (playerId: string) => apiRequest<void>(`/admin/players/${playerId}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "players"] }),
+  });
+}
+
+export interface DuplicateFlagPlayerSummary {
+  id: string;
+  fullName: string;
+  mobile: string;
+  playerId: string | null;
+  verificationStatus: string;
+}
+
 export interface DuplicateFlag {
   id: string;
   playerId: string;
@@ -84,6 +100,8 @@ export interface DuplicateFlag {
   signal: string;
   status: string;
   createdAt: string;
+  player: DuplicateFlagPlayerSummary;
+  suspectedDuplicatePlayer: DuplicateFlagPlayerSummary;
 }
 
 export function useDuplicateFlags() {
