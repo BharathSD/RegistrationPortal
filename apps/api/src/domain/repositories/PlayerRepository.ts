@@ -31,6 +31,13 @@ export interface PlayerRepository {
     extra?: { rejectionReason?: string; changeRequestNote?: string; verifiedByAdminId?: string },
   ): Promise<PlayerWithMedical>;
   assignPlayerId(id: string, playerId: string, verifiedByAdminId: string): Promise<PlayerWithMedical>;
+  /**
+   * Atomically computes the next global sequence number and assigns it —
+   * unlike calling countApproved() then assignPlayerId() as two separate
+   * calls, this can't race two concurrent approvals into computing the same
+   * sequence number for two different players.
+   */
+  assignNextPlayerId(id: string, verifiedByAdminId: string): Promise<PlayerWithMedical>;
   search(filters: PlayerSearchFilters): Promise<PaginatedResult<PlayerWithMedical>>;
   /** Total players ever issued a Player ID — the base for the next global sequence number. */
   countApproved(): Promise<number>;

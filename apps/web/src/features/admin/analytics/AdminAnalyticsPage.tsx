@@ -1,4 +1,4 @@
-import { Card } from "../../../design-system";
+import { Card, QueryError } from "../../../design-system";
 import { useAdminPlayers } from "../../../lib/api/admin";
 import type { VerificationStatus } from "@cricket-platform/shared";
 
@@ -10,7 +10,17 @@ const FUNNEL_STAGES: { status: VerificationStatus; label: string; color: string 
 ];
 
 function FunnelBar({ status, label, color }: { status: VerificationStatus; label: string; color: string }) {
-  const { data } = useAdminPlayers({ status, page: 1, pageSize: 1 });
+  const { data, isError, refetch } = useAdminPlayers({ status, page: 1, pageSize: 1 });
+
+  if (isError) {
+    return (
+      <div className="flex items-center gap-3">
+        <span className="w-40 shrink-0 text-sm text-text-secondary">{label}</span>
+        <QueryError className="flex-1 gap-2 py-3" message="Couldn't load this count." onRetry={refetch} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-3">
       <span className="w-40 shrink-0 text-sm text-text-secondary">{label}</span>

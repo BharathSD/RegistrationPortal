@@ -31,8 +31,20 @@ export class InMemoryRefreshTokenRepository implements RefreshTokenRepository {
     );
   }
 
+  async findByHash(tokenHash: string): Promise<RefreshTokenRecord | null> {
+    return this.tokens.find((t) => t.tokenHash === tokenHash) ?? null;
+  }
+
   async revoke(id: string): Promise<void> {
     const record = this.tokens.find((t) => t.id === id);
     if (record) record.revokedAt = new Date();
+  }
+
+  async revokeAllActive(subject: { playerId?: string | null; adminId?: string | null }): Promise<void> {
+    for (const t of this.tokens) {
+      if (t.revokedAt) continue;
+      if (subject.playerId && t.playerId === subject.playerId) t.revokedAt = new Date();
+      if (subject.adminId && t.adminId === subject.adminId) t.revokedAt = new Date();
+    }
   }
 }

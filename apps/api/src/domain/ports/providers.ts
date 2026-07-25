@@ -28,7 +28,10 @@ export interface PaymentOrder {
 
 export interface PaymentProvider {
   createOrder(amount: number, currency: string, receipt: string): Promise<PaymentOrder>;
+  /** Verifies the client checkout-callback signature (order_id|payment_id). */
   verifySignature(payload: unknown, signature: string): boolean;
+  /** Verifies a server-to-server webhook delivery's signature over the raw request body. */
+  verifyWebhookSignature(rawBody: Buffer, signature: string): boolean;
 }
 
 export interface StoredFile {

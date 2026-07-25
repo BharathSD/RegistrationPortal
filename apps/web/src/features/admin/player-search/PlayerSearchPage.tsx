@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Download, Pencil, Trash2, User } from "lucide-react";
-import { Button, Card, Modal, Skeleton } from "../../../design-system";
+import { Button, Card, ConfirmDialog, Modal, QueryError, Skeleton } from "../../../design-system";
 import { Input, Select } from "../../../design-system/components/Field";
 import { StatusBadge } from "../../../design-system/components/Badge";
 import { useToast } from "../../../design-system/components/Toast";
@@ -39,18 +39,24 @@ export function PlayerSearchPage() {
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [city, setCity] = useState("");
 
-  const { data, isLoading } = useAdminPlayers({ status: status || undefined, q: q || undefined, city: city || undefined, page: 1, pageSize: 100 });
+  const { data, isLoading, isError, refetch } = useAdminPlayers({ status: status || undefined, q: q || undefined, city: city || undefined, page: 1, pageSize: 100 });
   const deletePlayer = useDeletePlayer();
   const toast = useToast();
   const [editPlayerId, setEditPlayerId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  async function handleDelete(id: string, name: string) {
-    if (!window.confirm(`Remove ${name} from the platform? Their profile will no longer be searchable or able to log in. This cannot be undone.`)) return;
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
     try {
-      await deletePlayer.mutateAsync(id);
-      toast.success(`${name} removed.`);
+      await deletePlayer.mutateAsync(deleteTarget.id);
+      toast.success(`${deleteTarget.name} removed.`);
+      setDeleteTarget(null);
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -91,59 +97,74 @@ export function PlayerSearchPage() {
         />
       </div>
 
-      {isLoading && <Skeleton className="h-64" />}
+      {isError && <QueryError onRetry={refetch} />}
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border text-left text-text-secondary">
-            <tr>
-              <th className="p-3">Player ID</th>
-              <th className="p-3">Name</th>
-              <th className="p-3">Mobile</th>
-              <th className="p-3">Location</th>
-              <th className="p-3">Player Type</th>
-              <th className="p-3">Status</th>
-              <th className="p-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {data?.items.map((p) => (
-              <tr key={p.id} className="border-b border-border last:border-0">
-                <td className="p-3 font-mono text-xs">{p.playerId ?? "—"}</td>
-                <td className="p-3">{p.fullName}</td>
-                <td className="p-3">{p.mobile}</td>
-                <td className="p-3">
-                  {p.city}, {p.state}
-                </td>
-                <td className="p-3">{p.cricketRole ? p.cricketRole.replace("_", " ") : "—"}</td>
-                <td className="p-3">
-                  <StatusBadge status={p.verificationStatus} />
-                </td>
-                <td className="p-3 text-right">
-                  <Button size="sm" variant="ghost" aria-label={`Edit ${p.fullName}`} onClick={() => setEditPlayerId(p.id)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`Remove ${p.fullName}`}
-                    loading={deletePlayer.isPending}
-                    onClick={() => handleDelete(p.id, p.fullName)}
-                  >
-                    <Trash2 className="h-4 w-4 text-danger" />
-                  </Button>
-                </td>
+      {!isError && isLoading && <Skeleton className="h-64" />}
+
+      {!isError && (
+        <Card className="overflow-x-auto p-0">
+          <table className="w-full text-sm">
+            <thead className="border-b border-border text-left text-text-secondary">
+              <tr>
+                <th className="p-3">Player ID</th>
+                <th className="p-3">Name</th>
+                <th className="p-3">Mobile</th>
+                <th className="p-3">Location</th>
+                <th className="p-3">Player Type</th>
+                <th className="p-3">Status</th>
+                <th className="p-3" />
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {!isLoading && data?.items.length === 0 && (
-          <p className="p-6 text-center text-sm text-text-secondary">No players match this search.</p>
-        )}
-      </Card>
+            </thead>
+            <tbody>
+              {data?.items.map((p) => (
+                <tr key={p.id} className="border-b border-border last:border-0">
+                  <td className="p-3 font-mono text-xs">{p.playerId ?? "—"}</td>
+                  <td className="p-3">{p.fullName}</td>
+                  <td className="p-3">{p.mobile}</td>
+                  <td className="p-3">
+                    {p.city}, {p.state}
+                  </td>
+                  <td className="p-3">{p.cricketRole ? p.cricketRole.replace("_", " ") : "—"}</td>
+                  <td className="p-3">
+                    <StatusBadge status={p.verificationStatus} />
+                  </td>
+                  <td className="p-3 text-right">
+                    <Button size="sm" variant="ghost" aria-label={`Edit ${p.fullName}`} onClick={() => setEditPlayerId(p.id)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Remove ${p.fullName}`}
+                      loading={deletingId === p.id}
+                      onClick={() => setDeleteTarget({ id: p.id, name: p.fullName })}
+                    >
+                      <Trash2 className="h-4 w-4 text-danger" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!isLoading && data?.items.length === 0 && (
+            <p className="p-6 text-center text-sm text-text-secondary">No players match this search.</p>
+          )}
+        </Card>
+      )}
       {data && <p className="mt-2 text-xs text-text-secondary">{data.total} total players match this filter.</p>}
 
       {editPlayerId && <PlayerEditModal playerId={editPlayerId} onClose={() => setEditPlayerId(null)} />}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Remove player"
+        message={`Remove ${deleteTarget?.name} from the platform? Their profile will no longer be searchable or able to log in. This cannot be undone.`}
+        confirmLabel="Remove player"
+        variant="danger"
+        loading={deletingId === deleteTarget?.id}
+      />
     </div>
   );
 }

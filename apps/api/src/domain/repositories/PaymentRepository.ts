@@ -18,5 +18,6 @@ export interface PaymentRepository {
     providerOrderId: string;
   }): Promise<PaymentRecord>;
   findByRegistrationId(registrationId: string): Promise<PaymentRecord | null>;
+  findByProviderOrderId(providerOrderId: string): Promise<PaymentRecord | null>;
   updateStatus(id: string, status: PaymentStatus, providerPaymentId?: string): Promise<PaymentRecord>;
 }

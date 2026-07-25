@@ -14,11 +14,11 @@ export class ApiError extends Error {
   }
 }
 
-type TokenGetter = () => { accessToken: string | null; refreshToken: string | null };
-type OnTokensRefreshed = (accessToken: string, refreshToken: string) => void;
+type TokenGetter = () => { accessToken: string | null };
+type OnTokensRefreshed = (accessToken: string) => void;
 type OnAuthExpired = () => void;
 
-let getTokens: TokenGetter = () => ({ accessToken: null, refreshToken: null });
+let getTokens: TokenGetter = () => ({ accessToken: null });
 let onTokensRefreshed: OnTokensRefreshed = () => undefined;
 let onAuthExpired: OnAuthExpired = () => undefined;
 
@@ -51,18 +51,34 @@ async function rawRequest(path: string, options: RequestOptions = {}): Promise<R
   return fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
+    // Required for the refresh-token cookie (httpOnly, set by the API) to
+    // be sent/received at all — without this, a cross-origin fetch (the
+    // web app and API are on different ports in dev, and typically
+    // different subdomains in prod) silently drops Set-Cookie/Cookie.
+    credentials: "include",
     body: body ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
   });
 }
 
+/** In-flight refresh promise, shared across callers — without this, two requests 401-ing at the same moment would each rotate the refresh token, and the loser's rotation would invalidate the winner's brand-new token. */
+let refreshInFlight: Promise<boolean> | null = null;
+
 async function tryRefresh(): Promise<boolean> {
-  const { refreshToken } = getTokens();
-  if (!refreshToken) return false;
-  const res = await rawRequest("/auth/token/refresh", { method: "POST", body: { refreshToken }, auth: false });
-  if (!res.ok) return false;
-  const data = (await res.json()) as { accessToken: string; refreshToken: string };
-  onTokensRefreshed(data.accessToken, data.refreshToken);
-  return true;
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    // No body needed — the refresh token travels as the httpOnly cookie,
+    // not as a value this code ever sees.
+    const res = await rawRequest("/auth/token/refresh", { method: "POST", auth: false });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { accessToken: string };
+    onTokensRefreshed(data.accessToken);
+    return true;
+  })();
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
 }
 
 /** Every API call in the app funnels through here: attaches the bearer token, retries once on 401 via refresh rotation, and normalizes errors into ApiError. */

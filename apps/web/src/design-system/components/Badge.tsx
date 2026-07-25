@@ -3,10 +3,14 @@ import { CheckCircle2, Clock, XCircle, AlertTriangle, ScanLine } from "lucide-re
 
 type BadgeTone = "success" | "warning" | "danger" | "primary" | "neutral";
 
+// success/warning/danger use the darker "-700" text variant on top of the
+// same tint background — the base -500 color reads below 4.5:1 against its
+// own bg/10 tint in light theme (see tokens.css). Text stays on the -500
+// value for primary/neutral, which already clear AA.
 const TONE_CLASSES: Record<BadgeTone, string> = {
-  success: "bg-success/10 text-success",
-  warning: "bg-warning/10 text-warning",
-  danger: "bg-danger/10 text-danger",
+  success: "bg-success/10 text-success-700",
+  warning: "bg-warning/10 text-warning-700",
+  danger: "bg-danger/10 text-danger-700",
   primary: "bg-primary/10 text-primary",
   neutral: "bg-text-secondary/10 text-text-secondary",
 };

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import type { Tournament } from "@cricket-platform/shared";
-import { Button, Card } from "../../../design-system";
+import { Button, Card, ConfirmDialog, QueryError } from "../../../design-system";
 import { StatusBadge, TimeframeBadge } from "../../../design-system/components/Badge";
 import { useDeleteTournament, usePublishTournament, useTournaments } from "../../../lib/api/tournaments";
 import { useToast } from "../../../design-system/components/Toast";
@@ -17,21 +17,27 @@ const SECTIONS: Array<{ key: TournamentTimeframe; heading: string }> = [
 ];
 
 export function TournamentManagementPage() {
-  const { data: tournaments, isLoading } = useTournaments();
+  const { data: tournaments, isLoading, isError, refetch } = useTournaments();
   const [creating, setCreating] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [rosterTournamentId, setRosterTournamentId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Tournament | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const publish = usePublishTournament();
   const deleteTournament = useDeleteTournament();
   const toast = useToast();
 
-  async function handleDelete(id: string, name: string) {
-    if (!window.confirm(`Delete "${name}"? This permanently removes it and every registration for it. This cannot be undone.`)) return;
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
     try {
-      await deleteTournament.mutateAsync(id);
-      toast.success(`${name} deleted.`);
+      await deleteTournament.mutateAsync(deleteTarget.id);
+      toast.success(`${deleteTarget.name} deleted.`);
+      setDeleteTarget(null);
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -46,15 +52,18 @@ export function TournamentManagementPage() {
         </Button>
       </div>
 
-      {isLoading && <p className="text-sm text-text-secondary">Loading...</p>}
+      {isError && <QueryError onRetry={refetch} />}
 
-      {!isLoading && tournaments?.length === 0 && (
+      {!isError && isLoading && <p className="text-sm text-text-secondary">Loading...</p>}
+
+      {!isError && !isLoading && tournaments?.length === 0 && (
         <Card className="text-center text-sm text-text-secondary">
           No tournaments yet — create your first one to start accepting registrations.
         </Card>
       )}
 
-      {!isLoading &&
+      {!isError &&
+        !isLoading &&
         SECTIONS.filter((s) => grouped[s.key].length > 0).map((section) => (
           <div key={section.key} className="mb-6">
             <h2 className="mb-2 font-display text-sm font-semibold uppercase tracking-wide text-text-secondary">
@@ -98,8 +107,8 @@ export function TournamentManagementPage() {
                       size="sm"
                       variant="ghost"
                       aria-label={`Delete ${t.name}`}
-                      loading={deleteTournament.isPending}
-                      onClick={() => handleDelete(t.id, t.name)}
+                      loading={deletingId === t.id}
+                      onClick={() => setDeleteTarget(t)}
                     >
                       <Trash2 className="h-4 w-4 text-danger" />
                     </Button>
@@ -115,6 +124,17 @@ export function TournamentManagementPage() {
         <TournamentFormModal tournament={editingTournament} onClose={() => setEditingTournament(null)} />
       )}
       {rosterTournamentId && <RosterModal tournamentId={rosterTournamentId} onClose={() => setRosterTournamentId(null)} />}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete tournament"
+        message={`Delete "${deleteTarget?.name}"? This permanently removes it and every registration for it. This cannot be undone.`}
+        confirmLabel="Delete tournament"
+        variant="danger"
+        loading={deletingId === deleteTarget?.id}
+      />
     </div>
   );
 }

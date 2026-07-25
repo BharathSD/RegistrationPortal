@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BATTING_STYLES,
@@ -7,7 +7,7 @@ import {
   JERSEY_SIZES,
   type PlayerProfileInput,
 } from "@cricket-platform/shared";
-import { Button, Card, Checkbox, Stepper } from "../../design-system";
+import { Button, Card, Checkbox, RadioCardGroup, Stepper } from "../../design-system";
 import { Input, Select } from "../../design-system/components/Field";
 import { OtpGate } from "../auth-otp/OtpGate";
 import { useRegisterPlayer, useUploadPhoto } from "../../lib/api/players";
@@ -32,13 +32,59 @@ function stripEmptyStrings<T extends object>(obj: T): T {
   return result;
 }
 
+// A closed tab, an incoming call, a flaky mobile connection mid-registration
+// — none of these should cost a player their 6 filled-in steps. Persisted
+// to sessionStorage (not localStorage: this is in-progress scratch data,
+// not something that should survive to a different day/device) on every
+// field/step change, restored on mount, and cleared on successful submit or
+// an explicit "Start over". `photo` is a File and can't be JSON-serialized,
+// so it's the one field dropped before persisting — the player just re-picks
+// it if they come back mid-flow.
+const WIZARD_STORAGE_KEY = "playerRegistrationWizard:v1";
+
+interface PersistedWizardState {
+  stepIndex: number;
+  mobile: string;
+  data: Omit<WizardData, "photo">;
+}
+
+function loadPersistedState(): PersistedWizardState | null {
+  try {
+    const raw = sessionStorage.getItem(WIZARD_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedWizardState;
+    if (typeof parsed.stepIndex !== "number" || !parsed.data) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedState(state: PersistedWizardState) {
+  try {
+    sessionStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Persistence is a convenience, not a requirement — private browsing /
+    // storage-full shouldn't break the wizard itself.
+  }
+}
+
+function clearPersistedState() {
+  try {
+    sessionStorage.removeItem(WIZARD_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export function PlayerRegistrationWizard() {
-  const [stepIndex, setStepIndex] = useState(0);
-  const [mobile, setMobile] = useState("");
+  const [stepIndex, setStepIndex] = useState(() => loadPersistedState()?.stepIndex ?? 0);
+  const [mobile, setMobile] = useState(() => loadPersistedState()?.mobile ?? "");
   // country defaults to "India" — must be real initial state, not just a
   // display fallback on the input, or it never makes it into the submitted
   // payload when the user doesn't touch the field (required by the schema).
-  const [data, setData] = useState<WizardData>({ country: "India" });
+  const [data, setData] = useState<WizardData>(() => loadPersistedState()?.data ?? { country: "India" });
+  const [restored, setRestored] = useState(() => Boolean(loadPersistedState()));
   const navigate = useNavigate();
   const toast = useToast();
   const setTokens = useAuthStore((s) => s.setTokens);
@@ -47,8 +93,44 @@ export function PlayerRegistrationWizard() {
   const registerPlayer = useRegisterPlayer();
   const uploadPhoto = useUploadPhoto();
 
+  const stepRegionRef = useRef<HTMLDivElement>(null);
+  const isFirstRender = useRef(true);
+
+  // Persist on every field/step change (skipping the un-serializable File).
+  useEffect(() => {
+    if (stepIndex === 0) return; // pre-OTP: nothing worth restoring yet
+    const { photo: _photo, ...rest } = data;
+    savePersistedState({ stepIndex, mobile, data: rest });
+  }, [stepIndex, mobile, data]);
+
+  // Scroll to top and move focus to the new step's heading on every step
+  // change, and announce it for screen-reader users — otherwise a step
+  // transition is silent and the new content can render off-screen.
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const heading = stepRegionRef.current?.querySelector<HTMLElement>("h1, h2");
+    if (heading) {
+      heading.setAttribute("tabindex", "-1");
+      heading.focus();
+    }
+  }, [stepIndex]);
+
+  const stepAnnouncement = `Step ${stepIndex + 1} of ${STEPS.length}: ${STEPS[stepIndex]}`;
+
   function update<K extends keyof WizardData>(key: K, value: WizardData[K]) {
     setData((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function handleStartOver() {
+    clearPersistedState();
+    setData({ country: "India" });
+    setMobile("");
+    setStepIndex(0);
+    setRestored(false);
   }
 
   async function handleSubmit() {
@@ -59,11 +141,12 @@ export function PlayerRegistrationWizard() {
     try {
       const { photo, termsAccepted: _termsAccepted, ...profile } = data;
       const result = await registerPlayer.mutateAsync(stripEmptyStrings(profile) as PlayerProfileInput);
-      setTokens(result.accessToken, result.refreshToken);
+      setTokens(result.accessToken);
       setSession({ type: "PLAYER", profile: { id: result.id, playerId: result.playerId, fullName: result.fullName, verificationStatus: result.verificationStatus } });
 
       await uploadPhoto.mutateAsync(photo).catch(() => toast.error("Photo upload failed — you can retry from your dashboard."));
 
+      clearPersistedState();
       toast.success("Registration submitted! An admin will review your profile shortly.");
       navigate("/dashboard");
     } catch (err) {
@@ -78,61 +161,74 @@ export function PlayerRegistrationWizard() {
     }
   }
 
-  if (stepIndex === 0) {
-    return (
-      <div className="mx-auto max-w-md px-4 py-12">
-        <OtpGate
-          purpose="REGISTRATION"
-          title="Let's get you registered"
-          subtitle="Verify your mobile number to begin — this becomes your permanent player identity."
-          onVerified={(result, verifiedMobile) => {
-            setTokens(result.accessToken, result.refreshToken);
-            if (result.isNewPlayer) {
-              setMobile(verifiedMobile);
-              setStepIndex(1);
-            } else {
-              setSession({ type: "PLAYER", profile: result.player });
-              toast.info("You're already registered — taking you to your dashboard.");
-              navigate("/dashboard");
-            }
-          }}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto max-w-xl px-4 py-8">
-      <div className="mb-6">
-        <Stepper steps={STEPS} currentIndex={stepIndex} />
+    <>
+      <div aria-live="polite" role="status" className="sr-only">
+        {stepAnnouncement}
       </div>
 
-      {stepIndex === 1 && (
-        <StepPersonal data={data} update={update} onNext={() => setStepIndex(2)} onBack={() => setStepIndex(0)} />
+      {stepIndex === 0 ? (
+        <div ref={stepRegionRef} className="mx-auto max-w-md px-4 py-12">
+          <OtpGate
+            purpose="REGISTRATION"
+            title="Let's get you registered"
+            subtitle="Verify your mobile number to begin — this becomes your permanent player identity."
+            onVerified={(result, verifiedMobile) => {
+              setTokens(result.accessToken);
+              if (result.isNewPlayer) {
+                setMobile(verifiedMobile);
+                setStepIndex(1);
+              } else {
+                setSession({ type: "PLAYER", profile: result.player });
+                toast.info("You're already registered — taking you to your dashboard.");
+                navigate("/dashboard");
+              }
+            }}
+          />
+        </div>
+      ) : (
+        <div ref={stepRegionRef} className="mx-auto max-w-xl px-4 py-8">
+          <div className="mb-6">
+            <Stepper steps={STEPS} currentIndex={stepIndex} />
+          </div>
+
+          {restored && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-sm border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-text-secondary">
+              <span>We picked up where you left off.</span>
+              <button type="button" onClick={handleStartOver} className="font-medium text-primary underline">
+                Start over
+              </button>
+            </div>
+          )}
+
+          {stepIndex === 1 && (
+            <StepPersonal data={data} update={update} onNext={() => setStepIndex(2)} onBack={() => setStepIndex(0)} />
+          )}
+          {stepIndex === 2 && (
+            <StepAddress data={data} update={update} onNext={() => setStepIndex(3)} onBack={() => setStepIndex(1)} />
+          )}
+          {stepIndex === 3 && (
+            <StepEmergencyContact data={data} update={update} onNext={() => setStepIndex(4)} onBack={() => setStepIndex(2)} />
+          )}
+          {stepIndex === 4 && (
+            <StepJersey data={data} update={update} onNext={() => setStepIndex(5)} onBack={() => setStepIndex(3)} />
+          )}
+          {stepIndex === 5 && (
+            <StepCricketProfile data={data} update={update} onNext={() => setStepIndex(6)} onBack={() => setStepIndex(4)} />
+          )}
+          {stepIndex === 6 && (
+            <StepReview
+              data={data}
+              update={update}
+              mobile={mobile}
+              submitting={registerPlayer.isPending || uploadPhoto.isPending}
+              onSubmit={handleSubmit}
+              onBack={() => setStepIndex(5)}
+            />
+          )}
+        </div>
       )}
-      {stepIndex === 2 && (
-        <StepAddress data={data} update={update} onNext={() => setStepIndex(3)} onBack={() => setStepIndex(1)} />
-      )}
-      {stepIndex === 3 && (
-        <StepEmergencyContact data={data} update={update} onNext={() => setStepIndex(4)} onBack={() => setStepIndex(2)} />
-      )}
-      {stepIndex === 4 && (
-        <StepJersey data={data} update={update} onNext={() => setStepIndex(5)} onBack={() => setStepIndex(3)} />
-      )}
-      {stepIndex === 5 && (
-        <StepCricketProfile data={data} update={update} onNext={() => setStepIndex(6)} onBack={() => setStepIndex(4)} />
-      )}
-      {stepIndex === 6 && (
-        <StepReview
-          data={data}
-          update={update}
-          mobile={mobile}
-          submitting={registerPlayer.isPending || uploadPhoto.isPending}
-          onSubmit={handleSubmit}
-          onBack={() => setStepIndex(5)}
-        />
-      )}
-    </div>
+    </>
   );
 }
 
@@ -214,12 +310,13 @@ function StepPersonal({ data, update, onNext, onBack }: StepProps) {
       />
       <Input label="Email (optional)" type="email" value={data.email ?? ""} onChange={(e) => update("email", e.target.value)} />
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium">
+        <label htmlFor="wizard-photo-input" className="text-sm font-medium">
           Profile photo <span className="text-danger">*</span>
         </label>
         <div className="flex items-center gap-3">
           {photoPreviewUrl && <img src={photoPreviewUrl} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />}
           <input
+            id="wizard-photo-input"
             type="file"
             required
             accept="image/png,image/jpeg,image/webp"
@@ -320,19 +417,19 @@ function StepCricketProfile({ data, update, onNext, onBack }: StepProps) {
         Tell us how you play. Your player type (e.g. Super Striker, All-Rounder) is assigned separately by an admin —
         this is just about your style.
       </p>
-      <Select
+      <RadioCardGroup
         label="Batting style"
-        required
-        placeholder="Select style"
         value={data.battingStyle ?? ""}
-        onChange={(e) => update("battingStyle", e.target.value as PlayerProfileInput["battingStyle"])}
+        onChange={(v) => update("battingStyle", v as PlayerProfileInput["battingStyle"])}
         options={BATTING_STYLES.map((s) => ({ value: s, label: s.replace("_", "-") }))}
+        columns={2}
       />
-      <Select
+      <RadioCardGroup
         label="Bowling style"
         value={data.bowlingStyle ?? "NONE"}
-        onChange={(e) => update("bowlingStyle", e.target.value as PlayerProfileInput["bowlingStyle"])}
+        onChange={(v) => update("bowlingStyle", v as PlayerProfileInput["bowlingStyle"])}
         options={BOWLING_STYLES.map((s) => ({ value: s, label: s.replace(/_/g, " ") }))}
+        columns={2}
       />
       <NavButtons onBack={onBack} onNext={onNext} nextDisabled={!canContinue} />
       {!canContinue && <p className="text-xs text-text-secondary">Select a batting style to continue.</p>}

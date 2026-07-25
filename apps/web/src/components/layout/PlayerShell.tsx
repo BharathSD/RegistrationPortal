@@ -3,10 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { LogOut, Trophy } from "lucide-react";
 import { ThemeToggle } from "../../design-system";
 import { useAuthStore } from "../../lib/hooks/useAuthStore";
+import { useLogout } from "../../lib/api/auth";
 
 export function PlayerShell({ children }: { children: ReactNode }) {
   const session = useAuthStore((s) => s.session);
   const logout = useAuthStore((s) => s.logout);
+  const logoutMutation = useLogout();
   const navigate = useNavigate();
   const name = session?.type === "PLAYER" ? session.profile?.fullName : undefined;
 
@@ -22,6 +24,7 @@ export function PlayerShell({ children }: { children: ReactNode }) {
             <ThemeToggle />
             <button
               onClick={() => {
+                logoutMutation.mutate();
                 logout();
                 navigate("/");
               }}

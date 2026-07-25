@@ -21,6 +21,15 @@ export function makeRefreshSessionUseCase({ refreshTokenRepo }: RefreshSessionDe
 
     const record = await refreshTokenRepo.findActiveByHash(hashToken(refreshToken));
     if (!record) {
+      // Distinguish "replay of a token we already rotated away" (a real
+      // breach signal — rotation-on-use means this only happens if the
+      // token was copied and used twice) from "unknown/expired token". On
+      // replay, cascade-revoke every other active session for the same
+      // subject rather than just rejecting this one request.
+      const stale = await refreshTokenRepo.findByHash(hashToken(refreshToken));
+      if (stale?.revokedAt) {
+        await refreshTokenRepo.revokeAllActive({ playerId: stale.playerId, adminId: stale.adminId });
+      }
       throw new UnauthorizedError("Refresh token has been revoked or already used");
     }
     await refreshTokenRepo.revoke(record.id);

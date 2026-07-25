@@ -24,6 +24,11 @@ export class PrismaPaymentRepository implements PaymentRepository {
     return payment ? toDomain(payment) : null;
   }
 
+  async findByProviderOrderId(providerOrderId: string): Promise<PaymentRecord | null> {
+    const payment = await this.db.payment.findFirst({ where: { providerOrderId } });
+    return payment ? toDomain(payment) : null;
+  }
+
   async updateStatus(id: string, status: PaymentStatus, providerPaymentId?: string): Promise<PaymentRecord> {
     const payment = await this.db.payment.update({
       where: { id },

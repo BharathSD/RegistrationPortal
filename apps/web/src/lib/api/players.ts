@@ -12,7 +12,6 @@ export function useMyProfile(enabled: boolean) {
 
 export interface RegisterPlayerResponse extends Player {
   accessToken: string;
-  refreshToken: string;
 }
 
 export function useRegisterPlayer() {

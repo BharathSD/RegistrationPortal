@@ -3,6 +3,7 @@ import type { PlayerProfileInput } from "@cricket-platform/shared";
 import { ForbiddenError, UnauthorizedError } from "../../../domain/errors/DomainError";
 import { isPendingSubject } from "../../../application/auth/otp.util";
 import { hasValidImageSignature } from "../middleware/upload";
+import { setRefreshTokenCookie } from "../cookies";
 
 export interface PlayersUseCases {
   registerPlayer: (mobile: string, profile: PlayerProfileInput) => Promise<{ id: string }>;
@@ -29,7 +30,8 @@ export function makePlayersController(useCases: PlayersUseCases) {
       }
       const player = await useCases.registerPlayer(req.auth.mobile, req.body);
       await useCases.detectDuplicates(player.id);
-      const session = await useCases.issueSessionForPlayer(player.id, req.auth.mobile);
+      const { refreshToken, ...session } = await useCases.issueSessionForPlayer(player.id, req.auth.mobile);
+      setRefreshTokenCookie(res, refreshToken);
       res.status(201).json({ ...player, ...session });
     },
 

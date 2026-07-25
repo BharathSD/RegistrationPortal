@@ -133,7 +133,13 @@ model Player {
   id       String  @id @default(uuid())
   playerId String? @unique @map("player_id") // issued only on approval
 
-  mobile String @unique
+  // Not @unique here on purpose: true uniqueness is enforced by a partial
+  // index (WHERE deleted_at IS NULL) added in migration
+  // 20260725150000_partial_unique_mobile, so a soft-deleted player's mobile
+  // number frees up for re-registration instead of being permanently
+  // squatted by a dead row. See PrismaPlayerRepository.findByMobile, which
+  // filters deletedAt: null explicitly rather than relying on findUnique.
+  mobile String
   fullName      String   @map("full_name")
   dateOfBirth   DateTime @map("date_of_birth") @db.Date
   gender        Gender
@@ -190,6 +196,7 @@ model Player {
 
   @@index([verificationStatus])
   @@index([city])
+  @@index([mobile])
   @@map("players")
 }
 
@@ -316,6 +323,7 @@ model Payment {
   providerPaymentId String?       @map("provider_payment_id")
   createdAt         DateTime      @default(now()) @map("created_at")
 
+  @@index([providerOrderId])
   @@map("payments")
 }
 

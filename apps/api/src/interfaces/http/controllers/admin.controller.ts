@@ -11,7 +11,7 @@ export interface AdminUseCases {
   assignCricketProfile: (playerId: string, input: AssignCricketProfileInput, adminId: string) => Promise<unknown>;
   listDuplicateFlags: () => Promise<unknown>;
   resolveDuplicateFlag: (flagId: string, resolution: DuplicateFlagStatus, adminId: string) => Promise<unknown>;
-  deletePlayer: (playerId: string) => Promise<void>;
+  deletePlayer: (playerId: string, adminId: string) => Promise<void>;
 }
 
 export function makeAdminController(useCases: AdminUseCases) {
@@ -57,7 +57,7 @@ export function makeAdminController(useCases: AdminUseCases) {
     },
 
     async deletePlayer(req: Request, res: Response) {
-      await useCases.deletePlayer(req.params.playerId);
+      await useCases.deletePlayer(req.params.playerId, req.auth!.sub);
       res.status(204).send();
     },
   };

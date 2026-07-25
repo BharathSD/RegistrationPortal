@@ -12,9 +12,13 @@ export function makeCreatePaymentOrderUseCase({
   paymentRepo: PaymentRepository;
   paymentProvider: PaymentProvider;
 }) {
-  return async function createPaymentOrder(registrationId: string) {
+  return async function createPaymentOrder(playerId: string, registrationId: string) {
     const registration = await registrationRepo.findById(registrationId);
-    if (!registration) throw new NotFoundError("Registration", registrationId);
+    // Same NotFoundError for "doesn't exist" and "isn't yours" — avoids
+    // leaking which registration IDs belong to other players.
+    if (!registration || registration.playerId !== playerId) {
+      throw new NotFoundError("Registration", registrationId);
+    }
     if (registration.status !== "PENDING_PAYMENT") {
       throw new ConflictError(`Registration is not awaiting payment (status: ${registration.status})`);
     }

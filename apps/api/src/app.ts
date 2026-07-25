@@ -5,7 +5,8 @@ import helmet from "helmet";
 import compression from "compression";
 import pinoHttp from "pino-http";
 import swaggerUi from "swagger-ui-express";
-import YAML from "yamljs";
+import fs from "node:fs";
+import { load as loadYaml } from "js-yaml";
 
 import { env } from "./config/env";
 import { logger } from "./config/logger";
@@ -37,6 +38,7 @@ import { makeVerifyOtpUseCase } from "./application/auth/VerifyOtpUseCase";
 import { makeRefreshSessionUseCase } from "./application/auth/RefreshSessionUseCase";
 import { makeAdminLoginUseCase } from "./application/auth/AdminLoginUseCase";
 import { makeIssueSessionForPlayerUseCase } from "./application/auth/IssueSessionForPlayerUseCase";
+import { makeLogoutUseCase } from "./application/auth/LogoutUseCase";
 
 import { makeRegisterPlayerUseCase } from "./application/players/RegisterPlayerUseCase";
 import { makeGetMyProfileUseCase } from "./application/players/GetMyProfileUseCase";
@@ -67,6 +69,7 @@ import { makeCreatePaymentOrderUseCase } from "./application/registrations/Creat
 import { makeCancelRegistrationUseCase } from "./application/registrations/CancelRegistrationUseCase";
 import { makeListMyRegistrationsUseCase } from "./application/registrations/ListMyRegistrationsUseCase";
 import { makeRemoveRegistrationUseCase } from "./application/registrations/RemoveRegistrationUseCase";
+import { makeConfirmPaymentFromWebhookUseCase } from "./application/registrations/ConfirmPaymentFromWebhookUseCase";
 
 import { makeCreateCampaignUseCase } from "./application/communications/CreateCampaignUseCase";
 import { makeListCampaignsUseCase } from "./application/communications/ListCampaignsUseCase";
@@ -82,6 +85,7 @@ import { playersRoutes } from "./interfaces/http/routes/players.routes";
 import { adminRoutes } from "./interfaces/http/routes/admin.routes";
 import { tournamentsRoutes } from "./interfaces/http/routes/tournaments.routes";
 import { registrationsRoutes } from "./interfaces/http/routes/registrations.routes";
+import { paymentsRoutes } from "./interfaces/http/routes/payments.routes";
 import { communicationsRoutes } from "./interfaces/http/routes/communications.routes";
 import { checkinRoutes } from "./interfaces/http/routes/checkin.routes";
 import { statsRoutes } from "./interfaces/http/routes/stats.routes";
@@ -90,6 +94,20 @@ import { healthRoutes } from "./interfaces/http/routes/health.routes";
 import { requestId } from "./interfaces/http/middleware/requestId";
 import { globalRateLimiter } from "./interfaces/http/middleware/rateLimiter";
 import { errorHandler, notFoundHandler } from "./interfaces/http/middleware/errorHandler";
+
+/** Parses the comma-separated ALLOWED_ORIGINS env var into the array form cors() expects. */
+function parseAllowedOrigins(value: string | undefined): string[] {
+  const origins = (value ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  if (origins.length === 0) {
+    throw new Error(
+      "ALLOWED_ORIGINS must be set to a comma-separated list of allowed origins in production (e.g. https://app.example.com).",
+    );
+  }
+  return origins;
+}
 
 /**
  * Composition root: this is the only file allowed to know that Prisma,
@@ -103,11 +121,42 @@ export function createApp(): Express {
 
   // ---- global middleware ----
   app.use(requestId);
-  app.use(pinoHttp({ logger, customLogLevel: (_req, res) => (res.statusCode >= 500 ? "error" : "info") }));
+  app.use(
+    pinoHttp({
+      logger,
+      // Without this, pino-http mints its own request id independent of the
+      // x-request-id header requestId() just set/propagated above, so the id
+      // in structured logs would never match what's returned to the client —
+      // defeating the point of having a correlation id at all.
+      genReqId: (req) => req.headers["x-request-id"] as string,
+      customLogLevel: (_req, res) => (res.statusCode >= 500 ? "error" : "info"),
+    }),
+  );
   app.use(helmet());
-  app.use(cors({ origin: env.NODE_ENV === "production" ? undefined : true, credentials: true }));
+  app.use(
+    cors({
+      // In production this must be an explicit allowlist, not `true`
+      // (reflects every origin) and not `undefined` — passing `undefined`
+      // overwrites the cors package's own default and results in NO
+      // Access-Control-Allow-Origin header being sent at all, silently
+      // blocking the production frontend on every cross-origin request.
+      origin: env.NODE_ENV === "production" ? parseAllowedOrigins(env.ALLOWED_ORIGINS) : true,
+      credentials: true,
+    }),
+  );
   app.use(compression());
-  app.use(express.json({ limit: "1mb" }));
+  app.use(
+    express.json({
+      limit: "1mb",
+      // Stashes the exact bytes received so the payments webhook can verify
+      // its HMAC signature over the raw body — re-serializing req.body would
+      // produce different bytes than what Razorpay actually signed. See
+      // controllers/payments.controller.ts.
+      verify: (req, _res, buf) => {
+        (req as express.Request).rawBody = buf;
+      },
+    }),
+  );
   app.use(globalRateLimiter);
   // helmet()'s default Cross-Origin-Resource-Policy: same-origin blocks the
   // web app (a different origin/port in dev, and typically a separate
@@ -147,6 +196,7 @@ export function createApp(): Express {
     verifyOtp: makeVerifyOtpUseCase({ otpRepo, playerRepo, refreshTokenRepo }),
     refreshSession: makeRefreshSessionUseCase({ refreshTokenRepo }),
     adminLogin: makeAdminLoginUseCase({ adminUserRepo, refreshTokenRepo }),
+    logout: makeLogoutUseCase({ refreshTokenRepo }),
   };
 
   const playersUseCases = {
@@ -167,7 +217,7 @@ export function createApp(): Express {
     assignCricketProfile: makeAssignCricketProfileUseCase({ playerRepo, auditLogRepo }),
     listDuplicateFlags: makeListDuplicateFlagsUseCase({ duplicateFlagRepo }),
     resolveDuplicateFlag: makeResolveDuplicateFlagUseCase({ duplicateFlagRepo, auditLogRepo }),
-    deletePlayer: makeDeletePlayerUseCase({ playerRepo }),
+    deletePlayer: makeDeletePlayerUseCase({ playerRepo, refreshTokenRepo, auditLogRepo }),
   };
 
   const tournamentsUseCases = {
@@ -177,8 +227,8 @@ export function createApp(): Express {
     updateTournament: makeUpdateTournamentUseCase({ tournamentRepo }),
     publishTournament: makePublishTournamentUseCase({ tournamentRepo }),
     getRoster: makeGetRosterUseCase({ registrationRepo }),
-    deleteTournament: makeDeleteTournamentUseCase({ tournamentRepo }),
-    removeRegistration: makeRemoveRegistrationUseCase({ registrationRepo }),
+    deleteTournament: makeDeleteTournamentUseCase({ tournamentRepo, auditLogRepo }),
+    removeRegistration: makeRemoveRegistrationUseCase({ registrationRepo, auditLogRepo }),
   };
 
   const registrationsUseCases = {
@@ -191,6 +241,10 @@ export function createApp(): Express {
     createPaymentOrder: makeCreatePaymentOrderUseCase({ registrationRepo, paymentRepo, paymentProvider }),
     cancelRegistration: makeCancelRegistrationUseCase({ registrationRepo }),
     listMyRegistrations: makeListMyRegistrationsUseCase({ registrationRepo }),
+  };
+
+  const paymentsUseCases = {
+    confirmPaymentFromWebhook: makeConfirmPaymentFromWebhookUseCase({ paymentRepo, registrationRepo }),
   };
 
   const communicationsUseCases = {
@@ -218,17 +272,21 @@ export function createApp(): Express {
 
   const v1 = express.Router();
   v1.use("/auth", authRoutes(authUseCases));
-  v1.use("/players", playersRoutes(playersUseCases));
+  v1.use("/players", playersRoutes(playersUseCases, playerRepo));
   v1.use("/admin", adminRoutes(adminUseCases));
   v1.use("/tournaments", tournamentsRoutes(tournamentsUseCases));
-  v1.use("/registrations", registrationsRoutes(registrationsUseCases));
+  v1.use("/registrations", registrationsRoutes(registrationsUseCases, playerRepo));
+  v1.use("/payments", paymentsRoutes(paymentsUseCases, paymentProvider));
   v1.use("/communications", communicationsRoutes(communicationsUseCases));
   v1.use("/checkin", checkinRoutes(checkinUseCases));
   v1.use("/stats", statsRoutes(statsUseCases));
   app.use("/api/v1", v1);
 
   // ---- API docs ----
-  const openapiDocument = YAML.load(path.resolve(__dirname, "../openapi.yaml"));
+  const openapiDocument = loadYaml(fs.readFileSync(path.resolve(__dirname, "../openapi.yaml"), "utf8")) as Record<
+    string,
+    unknown
+  >;
   app.get("/openapi.json", (_req, res) => res.json(openapiDocument));
   app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiDocument));
 

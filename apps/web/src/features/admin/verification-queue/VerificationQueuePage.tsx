@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, User } from "lucide-react";
-import { Button, Card, Modal, Skeleton } from "../../../design-system";
+import { Button, Card, Modal, QueryError, Skeleton } from "../../../design-system";
 import { Input, Select } from "../../../design-system/components/Field";
 import { StatusBadge } from "../../../design-system/components/Badge";
 import {
@@ -29,7 +29,7 @@ export function VerificationQueuePage() {
   const [q, setQ] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
-  const { data, isLoading } = useAdminPlayers({ status: status || undefined, q: q || undefined, page: 1, pageSize: 50 });
+  const { data, isLoading, isError, refetch } = useAdminPlayers({ status: status || undefined, q: q || undefined, page: 1, pageSize: 50 });
   const { data: duplicateFlags } = useDuplicateFlags();
 
   const duplicateSet = new Set(duplicateFlags?.map((f) => f.playerId));
@@ -51,31 +51,35 @@ export function VerificationQueuePage() {
         </div>
       </div>
 
-      {isLoading && <Skeleton className="h-48" />}
+      {isError && <QueryError onRetry={refetch} />}
 
-      <div className="flex flex-col gap-2">
-        {data?.items.map((player) => (
-          <button key={player.id} onClick={() => setSelectedPlayerId(player.id)} className="text-left">
-            <Card className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-medium">{player.fullName}</p>
-                <p className="text-xs text-text-secondary">
-                  {player.mobile} · {player.city}, {player.state}
-                </p>
-                {duplicateSet.has(player.id) && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-warning">
-                    <AlertTriangle className="h-3.5 w-3.5" /> Possible duplicate
+      {!isError && isLoading && <Skeleton className="h-48" />}
+
+      {!isError && (
+        <div className="flex flex-col gap-2">
+          {data?.items.map((player) => (
+            <button key={player.id} onClick={() => setSelectedPlayerId(player.id)} className="text-left">
+              <Card className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">{player.fullName}</p>
+                  <p className="text-xs text-text-secondary">
+                    {player.mobile} · {player.city}, {player.state}
                   </p>
-                )}
-              </div>
-              <StatusBadge status={player.verificationStatus} />
-            </Card>
-          </button>
-        ))}
-        {!isLoading && data?.items.length === 0 && (
-          <Card className="text-center text-sm text-text-secondary">No players match this filter.</Card>
-        )}
-      </div>
+                  {duplicateSet.has(player.id) && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-warning">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Possible duplicate
+                    </p>
+                  )}
+                </div>
+                <StatusBadge status={player.verificationStatus} />
+              </Card>
+            </button>
+          ))}
+          {!isLoading && data?.items.length === 0 && (
+            <Card className="text-center text-sm text-text-secondary">No players match this filter.</Card>
+          )}
+        </div>
+      )}
 
       {selectedPlayerId && (
         <PlayerDetailModal

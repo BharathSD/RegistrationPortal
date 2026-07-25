@@ -5,6 +5,8 @@ export * from "./components/RadioCardGroup";
 export * from "./components/Badge";
 export * from "./components/Checkbox";
 export * from "./components/Modal";
+export * from "./components/ConfirmDialog";
+export * from "./components/QueryError";
 export * from "./components/Toast";
 export * from "./components/StatTile";
 export * from "./components/Skeleton";

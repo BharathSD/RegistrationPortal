@@ -12,7 +12,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: "bg-primary text-white hover:bg-primary-600 disabled:opacity-50",
+  // text-on-primary (not text-white): in dark theme --color-primary-500 is
+  // too light for white text to clear 4.5:1, so that token flips to a dark
+  // color instead — see tokens.css.
+  primary: "bg-primary text-on-primary hover:bg-primary-600 disabled:opacity-50",
   secondary:
     "bg-surface border border-border text-text-primary hover:bg-canvas disabled:opacity-50",
   ghost: "bg-transparent text-text-primary hover:bg-canvas disabled:opacity-50",

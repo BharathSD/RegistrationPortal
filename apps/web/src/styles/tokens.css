@@ -18,6 +18,22 @@
   --color-warning-500: #d6821f;
   --color-danger-500: #d6392f;
 
+  /*
+   * "On tint" text variants used by Badge for its success/warning/danger
+   * tones. The base -500 colors above read at ~3-4.7:1 against their own
+   * bg/10 tint (badge text sits on a near-white blend, not pure white) —
+   * below the 4.5:1 WCAG AA floor for the ~12px badge text. These are
+   * darkened versions of the same hue, verified against the actual
+   * 10%-tint-over-surface blend (not just against white):
+   * success ~5.5:1, warning ~5.8:1, danger ~6.2:1.
+   */
+  --color-success-700: #0e6e42;
+  --color-warning-700: #8f4e0f;
+  --color-danger-700: #a52a20;
+
+  /* Text color to place on top of a solid --color-primary-500 fill (e.g. the primary Button). White in light theme, flipped to a near-black in dark theme — see the dark block below for why. */
+  --color-on-primary: #ffffff;
+
   --color-pitch-gradient: linear-gradient(135deg, #0b3d2e 0%, #1651e0 100%);
 
   color-scheme: light;
@@ -37,6 +53,22 @@
   --color-success-500: #3fcb8a;
   --color-warning-500: #f2a93e;
   --color-danger-500: #f2564c;
+
+  /* Badge text-on-tint already clears 4.5:1 in dark theme (bright color against a near-black tint) — reuse the same -500 values rather than introducing a second dark palette. */
+  --color-success-700: #3fcb8a;
+  --color-warning-700: #f2a93e;
+  --color-danger-700: #f2564c;
+
+  /*
+   * --color-primary-500 (#5b8cff) is only ~3.2:1 against white text — below
+   * 4.5:1 — because it doubles as the light-on-tint color for Badge/NavLink
+   * in dark theme (where a bright blue is exactly what's needed). Darkening
+   * the shared token to fix the Button would drop Badge's dark-theme
+   * primary tone below AA instead. Flipping the Button's text color to a
+   * near-black is the fix that doesn't trade one regression for another:
+   * black-on-#5b8cff measures ~6.6:1.
+   */
+  --color-on-primary: #10131c;
 
   --color-pitch-gradient: linear-gradient(135deg, #06251c 0%, #0b1b4a 100%);
 

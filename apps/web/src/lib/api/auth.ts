@@ -16,14 +16,12 @@ export interface RequestOtpResponse {
 
 export interface VerifyOtpResponse {
   accessToken: string;
-  refreshToken: string;
   player: PlayerSummary | null;
   isNewPlayer: boolean;
 }
 
 export interface AdminLoginResponse {
   accessToken: string;
-  refreshToken: string;
   admin: AdminUser;
 }
 
@@ -45,5 +43,18 @@ export function useAdminLogin() {
   return useMutation({
     mutationFn: (input: AdminLoginInput) =>
       apiRequest<AdminLoginResponse>("/auth/admin/login", { method: "POST", body: input, auth: false }),
+  });
+}
+
+/**
+ * Clears the httpOnly refresh-token cookie and revokes it server-side.
+ * Clearing local auth state alone (useAuthStore.logout()) is not enough
+ * now that the refresh token lives in a cookie the client can't touch
+ * directly — without this call, "logging out" would leave a live session
+ * the browser could silently resume via the cookie.
+ */
+export function useLogout() {
+  return useMutation({
+    mutationFn: () => apiRequest<void>("/auth/logout", { method: "POST", auth: false }),
   });
 }

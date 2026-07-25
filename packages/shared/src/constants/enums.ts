@@ -85,9 +85,6 @@ export type DuplicateFlagStatus = (typeof DUPLICATE_FLAG_STATUSES)[number];
  * without the other) and was merged away. SCANNER remains the one genuinely
  * restricted role, for match-day gate volunteers who should only ever be
  * able to scan a QR code — not see medical data, verify players, or send
- * bulk messages.
+ * bulk messages. Enforced via requireRole(...) on each route; there is no
+ * finer-grained permission system beyond these two roles.
  */
-export const ADMIN_PERMISSIONS: Record<AdminRole, string[]> = {
-  ADMIN: ["*"],
-  SCANNER: ["checkin:scan", "checkin:read"],
-};

@@ -22,10 +22,20 @@ export default {
           DEFAULT: "var(--color-primary-500)",
           600: "var(--color-primary-600)",
         },
+        "on-primary": "var(--color-on-primary)",
         gold: "var(--color-accent-gold-500)",
-        success: "var(--color-success-500)",
-        warning: "var(--color-warning-500)",
-        danger: "var(--color-danger-500)",
+        success: {
+          DEFAULT: "var(--color-success-500)",
+          700: "var(--color-success-700)",
+        },
+        warning: {
+          DEFAULT: "var(--color-warning-500)",
+          700: "var(--color-warning-700)",
+        },
+        danger: {
+          DEFAULT: "var(--color-danger-500)",
+          700: "var(--color-danger-700)",
+        },
       },
       fontFamily: {
         display: ["Sora", "ui-sans-serif", "system-ui", "sans-serif"],

@@ -87,7 +87,7 @@ export function LoginPage() {
               title="Player Login"
               subtitle="Log in with your registered mobile number."
               onVerified={(result) => {
-                setTokens(result.accessToken, result.refreshToken);
+                setTokens(result.accessToken);
                 setSession({ type: "PLAYER", profile: result.player });
                 const redirectTo = (location.state as { from?: Location })?.from?.pathname;
                 navigate(redirectTo || "/dashboard", { replace: true });

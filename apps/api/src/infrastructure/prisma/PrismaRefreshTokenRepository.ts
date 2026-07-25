@@ -29,7 +29,22 @@ export class PrismaRefreshTokenRepository implements RefreshTokenRepository {
     });
   }
 
+  async findByHash(tokenHash: string): Promise<RefreshTokenRecord | null> {
+    return this.db.refreshToken.findFirst({ where: { tokenHash } });
+  }
+
   async revoke(id: string): Promise<void> {
     await this.db.refreshToken.update({ where: { id }, data: { revokedAt: new Date() } });
+  }
+
+  async revokeAllActive(subject: { playerId?: string | null; adminId?: string | null }): Promise<void> {
+    await this.db.refreshToken.updateMany({
+      where: {
+        revokedAt: null,
+        ...(subject.playerId ? { playerId: subject.playerId } : {}),
+        ...(subject.adminId ? { adminId: subject.adminId } : {}),
+      },
+      data: { revokedAt: new Date() },
+    });
   }
 }

@@ -78,6 +78,13 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
       where: { tournamentId },
       include: includeRelations,
       orderBy: { createdAt: "asc" },
+      // Safety cap, not real pagination: this backs the admin roster/
+      // check-in screens, which render the full list at once today. A
+      // single tournament realistically won't clear a few thousand
+      // registrations, but an unbounded findMany() here was a genuine
+      // cliff waiting to happen at "hundreds of tournaments" scale — cursor
+      // pagination with matching UI is the proper fix, tracked separately.
+      take: 5000,
     });
     return items.map(toDomainWithRelations);
   }

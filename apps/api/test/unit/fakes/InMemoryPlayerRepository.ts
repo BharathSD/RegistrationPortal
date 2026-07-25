@@ -6,6 +6,7 @@ import type {
 } from "../../../src/domain/repositories/PlayerRepository";
 import type { PlayerWithMedical } from "../../../src/domain/entities";
 import type { PlayerProfileInput, VerificationStatus, PaginatedResult } from "@cricket-platform/shared";
+import { buildPlayerId } from "@cricket-platform/shared";
 
 export class InMemoryPlayerRepository implements PlayerRepository {
   players: PlayerWithMedical[] = [];
@@ -90,6 +91,13 @@ export class InMemoryPlayerRepository implements PlayerRepository {
     return player;
   }
 
+  async assignNextPlayerId(id: string, verifiedByAdminId: string): Promise<PlayerWithMedical> {
+    // Single-threaded JS has no real race to simulate here — this just
+    // mirrors the atomic Prisma implementation's external behavior.
+    const sequence = (await this.countApproved()) + 1;
+    return this.assignPlayerId(id, buildPlayerId(sequence), verifiedByAdminId);
+  }
+
   async search(filters: PlayerSearchFilters): Promise<PaginatedResult<PlayerWithMedical>> {
     const items = this.players.filter((p) => !filters.status || p.verificationStatus === filters.status);
     return { items, page: filters.page, pageSize: filters.pageSize, total: items.length };
@@ -108,4 +116,9 @@ export class InMemoryPlayerRepository implements PlayerRepository {
     );
   }
 
+  async softDelete(id: string): Promise<void> {
+    const player = this.players.find((p) => p.id === id);
+    if (!player) throw new Error("not found");
+    this.players = this.players.filter((p) => p.id !== id);
+  }
 }

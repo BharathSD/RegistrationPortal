@@ -146,7 +146,9 @@ export function OtpGate({ purpose, title, subtitle, onVerified }: OtpGateProps) 
             value={digit}
             onChange={(e) => handleDigitChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
+            type="text"
             inputMode="numeric"
+            autoComplete="one-time-code"
             maxLength={1}
             aria-label={`Digit ${i + 1} of 6`}
             className="h-12 w-10 rounded-sm border border-border bg-surface text-center text-lg font-semibold tabular-nums focus-visible:border-primary"

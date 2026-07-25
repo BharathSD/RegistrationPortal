@@ -1,4 +1,5 @@
-import type { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import type {
   PlayerRepository,
   PlayerSearchFilters,
@@ -6,6 +7,7 @@ import type {
 } from "../../domain/repositories/PlayerRepository";
 import type { PlayerWithMedical } from "../../domain/entities";
 import type { PlayerProfileInput, VerificationStatus, PaginatedResult } from "@cricket-platform/shared";
+import { buildPlayerId } from "@cricket-platform/shared";
 import { toDomainPlayer } from "./mappers";
 
 const includeMedical = { medicalInfo: true } as const;
@@ -19,8 +21,13 @@ export class PrismaPlayerRepository implements PlayerRepository {
   }
 
   async findByMobile(mobile: string): Promise<PlayerWithMedical | null> {
-    const player = await this.db.player.findUnique({ where: { mobile }, include: includeMedical });
-    return player && !player.deletedAt ? toDomainPlayer(player) : null;
+    // findFirst, not findUnique: mobile is no longer DB-unique on its own —
+    // see the partial-index comment on the schema field. Filtering
+    // deletedAt: null in the query (rather than post-fetch) is what
+    // guarantees this resolves to the one active player even if a
+    // soft-deleted row shares the same mobile number.
+    const player = await this.db.player.findFirst({ where: { mobile, deletedAt: null }, include: includeMedical });
+    return player ? toDomainPlayer(player) : null;
   }
 
   async findByPlayerId(playerId: string): Promise<PlayerWithMedical | null> {
@@ -146,6 +153,42 @@ export class PrismaPlayerRepository implements PlayerRepository {
       include: includeMedical,
     });
     return toDomainPlayer(player);
+  }
+
+  async assignNextPlayerId(id: string, verifiedByAdminId: string): Promise<PlayerWithMedical> {
+    // SERIALIZABLE so two concurrent approvals can't both read the same
+    // count and compute the same sequence number — Postgres aborts the
+    // loser with a serialization failure (Prisma error P2034), which we
+    // retry a bounded number of times rather than surface as a 500.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.db.$transaction(
+          async (tx: Prisma.TransactionClient) => {
+            const count = await tx.player.count({ where: { playerId: { not: null } } });
+            const playerId = buildPlayerId(count + 1);
+            const player = await tx.player.update({
+              where: { id },
+              data: {
+                playerId,
+                verificationStatus: "VERIFIED",
+                verifiedByAdminId,
+                verifiedAt: new Date(),
+                rejectionReason: null,
+                changeRequestNote: null,
+              },
+              include: includeMedical,
+            });
+            return toDomainPlayer(player);
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (err) {
+        const isSerializationFailure = err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034";
+        if (!isSerializationFailure || attempt === 2) throw err;
+      }
+    }
+    // Unreachable — the loop always returns or throws — but keeps TS happy.
+    throw new Error("assignNextPlayerId: exhausted retries");
   }
 
   async search(filters: PlayerSearchFilters): Promise<PaginatedResult<PlayerWithMedical>> {

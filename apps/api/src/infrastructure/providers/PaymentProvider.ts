@@ -14,6 +14,10 @@ export class MockPaymentProvider implements PaymentProvider {
   verifySignature(): boolean {
     return true;
   }
+
+  verifyWebhookSignature(): boolean {
+    return true;
+  }
 }
 
 /**
@@ -44,8 +48,27 @@ export class RazorpayPaymentProvider implements PaymentProvider {
       .createHmac("sha256", env.RAZORPAY_KEY_SECRET ?? "")
       .update(`${payload.orderId}|${payload.paymentId}`)
       .digest("hex");
-    return expected === signature;
+    return timingSafeEqualHex(expected, signature);
   }
+
+  /**
+   * Webhook deliveries are signed over the *raw* request body with a secret
+   * that's distinct from the key secret (configured separately in the
+   * Razorpay dashboard) — see https://razorpay.com/docs/webhooks/validate-test/.
+   */
+  verifyWebhookSignature(rawBody: Buffer, signature: string): boolean {
+    if (!env.RAZORPAY_WEBHOOK_SECRET) return false;
+    const expected = crypto.createHmac("sha256", env.RAZORPAY_WEBHOOK_SECRET).update(rawBody).digest("hex");
+    return timingSafeEqualHex(expected, signature);
+  }
+}
+
+/** Constant-time hex comparison — a plain `===` on signatures is a timing side-channel. */
+function timingSafeEqualHex(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "hex");
+  const bufB = Buffer.from(b, "hex");
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 export function createPaymentProvider(): PaymentProvider {

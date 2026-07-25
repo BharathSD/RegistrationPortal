@@ -7,11 +7,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     configureApiClient({
       getTokens: () => {
-        const { accessToken, refreshToken } = useAuthStore.getState();
-        return { accessToken, refreshToken };
+        const { accessToken } = useAuthStore.getState();
+        return { accessToken };
       },
-      onTokensRefreshed: (accessToken, refreshToken) => {
-        useAuthStore.getState().setTokens(accessToken, refreshToken);
+      onTokensRefreshed: (accessToken) => {
+        useAuthStore.getState().setTokens(accessToken);
       },
       onAuthExpired: () => {
         useAuthStore.getState().logout();

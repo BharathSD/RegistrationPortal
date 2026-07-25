@@ -76,6 +76,22 @@ jobs:
         env:
           VITE_API_BASE_URL: /api/v1
 
+  # Fails the workflow (visibly, in the PR checks list) on any high/critical
+  # advisory in a production dependency. Not wired into docker-build's
+  # `needs` so a new advisory in an unrelated package doesn't block shipping
+  # an unrelated fix same-day — but it's a required check a branch
+  # protection rule can point at once the team decides to enforce that.
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
+
   docker-build:
     runs-on: ubuntu-latest
     needs: [lint-and-typecheck, api-tests, web-build]

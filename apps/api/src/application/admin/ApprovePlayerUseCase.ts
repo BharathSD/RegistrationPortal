@@ -1,4 +1,3 @@
-import { buildPlayerId } from "@cricket-platform/shared";
 import type { PlayerRepository } from "../../domain/repositories/PlayerRepository";
 import type { AuditLogRepository } from "../../domain/repositories/AuditLogRepository";
 import type { WhatsAppProvider } from "../../domain/ports/providers";
@@ -22,10 +21,8 @@ export function makeApprovePlayerUseCase({ playerRepo, auditLogRepo, whatsAppPro
       throw new ConflictError("Assign a player type (Super Striker, All-Rounder, Batsman, or Bowler) before approving");
     }
 
-    const sequence = (await playerRepo.countApproved()) + 1;
-    const newPlayerId = buildPlayerId(sequence);
-
-    const updated = await playerRepo.assignPlayerId(player.id, newPlayerId, adminId);
+    const updated = await playerRepo.assignNextPlayerId(player.id, adminId);
+    const newPlayerId = updated.playerId!;
 
     await whatsAppProvider.send({
       to: player.mobile,

@@ -54,4 +54,9 @@ export class InMemoryTournamentRepository implements TournamentRepository {
   async countConfirmedRegistrations(id: string): Promise<number> {
     return this.confirmedCounts.get(id) ?? 0;
   }
+
+  async remove(id: string): Promise<void> {
+    this.tournaments = this.tournaments.filter((t) => t.id !== id);
+    this.confirmedCounts.delete(id);
+  }
 }

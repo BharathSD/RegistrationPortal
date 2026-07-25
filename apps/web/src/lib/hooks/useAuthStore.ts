@@ -16,28 +16,27 @@ export type Session = PlayerSession | AdminSession;
 
 interface AuthState {
   accessToken: string | null;
-  refreshToken: string | null;
   session: Session | null;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  setTokens: (accessToken: string) => void;
   setSession: (session: Session | null) => void;
   logout: () => void;
 }
 
 /**
- * Persisted to localStorage for this MVP so a page refresh keeps the user
- * signed in. Production hardening note (see docs/PRODUCTION_CHECKLIST.md):
- * move the refresh token to an httpOnly cookie set by the API instead of
- * client-readable storage, to remove it from XSS blast radius.
+ * The refresh token is no longer handled here at all — the API sets it as
+ * an httpOnly cookie (see apps/api/src/interfaces/http/cookies.ts), so it's
+ * never readable by JS and never touches localStorage. Only the short-lived
+ * access token is persisted, so a page refresh keeps the user signed in
+ * without keeping the long-lived credential in the XSS blast radius.
  */
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       accessToken: null,
-      refreshToken: null,
       session: null,
-      setTokens: (accessToken, refreshToken) => set({ accessToken, refreshToken }),
+      setTokens: (accessToken) => set({ accessToken }),
       setSession: (session) => set({ session }),
-      logout: () => set({ accessToken: null, refreshToken: null, session: null }),
+      logout: () => set({ accessToken: null, session: null }),
     }),
     { name: "cricket-platform-auth" },
   ),

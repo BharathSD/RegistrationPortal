@@ -5,6 +5,8 @@ declare global {
   namespace Express {
     interface Request {
       auth?: AccessTokenClaims;
+      /** Raw request body bytes, captured by express.json()'s verify hook in app.ts — needed for webhook HMAC signature checks, which must run over the exact bytes sent, not the re-serialized parsed object. */
+      rawBody?: Buffer;
     }
   }
 }

@@ -39,6 +39,9 @@ export class PrismaTournamentRepository implements TournamentRepository {
     const items = await this.db.tournament.findMany({
       where: status ? { status } : undefined,
       orderBy: { startDate: "asc" },
+      // Safety cap, not real pagination — see the same note on
+      // PrismaRegistrationRepository.listByTournament.
+      take: 1000,
     });
     return items.map(toDomain);
   }

@@ -13,10 +13,24 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().default("redis://localhost:6379"),
 
-  JWT_ACCESS_SECRET: z.string().min(16),
-  JWT_REFRESH_SECRET: z.string().min(16),
+  // 32 chars is a floor, not a target — .env.example asks for a full
+  // 32-byte (64 hex char) `openssl rand -hex 32` secret. This just stops an
+  // obviously-too-short value from booting silently.
+  JWT_ACCESS_SECRET: z.string().min(32),
+  JWT_REFRESH_SECRET: z.string().min(32),
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL: z.string().default("30d"),
+
+  // Independent from the JWT secrets on purpose: reusing a token-signing
+  // secret as a hashing pepper means one leak compromises both token
+  // forgery and OTP hash computation. Falls back to JWT_ACCESS_SECRET only
+  // so existing local `.env` files don't break; set this explicitly in prod.
+  OTP_HASH_PEPPER: z.string().min(32).optional(),
+
+  // Origin(s) the production frontend is served from, comma-separated.
+  // Required in production — see app.ts, where cors() reads this instead of
+  // reflecting every origin or (worse) sending no ACAO header at all.
+  ALLOWED_ORIGINS: z.string().optional(),
 
   OTP_LENGTH: z.coerce.number().default(6),
   OTP_TTL_SECONDS: z.coerce.number().default(300),
@@ -47,6 +61,10 @@ const envSchema = z.object({
   PAYMENTS_ENABLED: z.coerce.boolean().default(false),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  // Separate from RAZORPAY_KEY_SECRET: Razorpay signs the checkout-callback
+  // payload (order_id|payment_id) with the key secret, but signs webhook
+  // deliveries with a distinct secret configured in the Razorpay dashboard.
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

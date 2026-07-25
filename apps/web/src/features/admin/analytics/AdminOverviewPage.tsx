@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, Pencil, Plus, ShieldCheck, Trash2, Trophy, Users } from "lucide-react";
 import type { Tournament } from "@cricket-platform/shared";
-import { Button, Card, StatTile } from "../../../design-system";
+import { Button, Card, ConfirmDialog, QueryError, StatTile } from "../../../design-system";
 import { StatusBadge, TimeframeBadge } from "../../../design-system/components/Badge";
 import { useToast } from "../../../design-system/components/Toast";
 import { ApiError } from "../../../lib/api/client";
@@ -22,21 +22,27 @@ export function AdminOverviewPage() {
   const { data: pendingPlayers } = useAdminPlayers({ status: "PENDING_VERIFICATION", page: 1, pageSize: 1 });
   const { data: verifiedPlayers } = useAdminPlayers({ status: "VERIFIED", page: 1, pageSize: 1 });
   const { data: duplicateFlags } = useDuplicateFlags();
-  const { data: tournaments, isLoading: tournamentsLoading } = useTournaments();
+  const { data: tournaments, isLoading: tournamentsLoading, isError: tournamentsError, refetch: refetchTournaments } = useTournaments();
 
   const [creating, setCreating] = useState(false);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [rosterTournamentId, setRosterTournamentId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Tournament | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const deleteTournament = useDeleteTournament();
   const toast = useToast();
 
-  async function handleDelete(id: string, name: string) {
-    if (!window.confirm(`Delete "${name}"? This permanently removes it and every registration for it. This cannot be undone.`)) return;
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
     try {
-      await deleteTournament.mutateAsync(id);
-      toast.success(`${name} deleted.`);
+      await deleteTournament.mutateAsync(deleteTarget.id);
+      toast.success(`${deleteTarget.name} deleted.`);
+      setDeleteTarget(null);
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -75,44 +81,47 @@ export function AdminOverviewPage() {
           </Link>
         </div>
 
-        {tournamentsLoading && <p className="text-sm text-text-secondary">Loading...</p>}
-        {!tournamentsLoading && tournaments?.length === 0 && (
+        {tournamentsError && <QueryError onRetry={refetchTournaments} />}
+        {!tournamentsError && tournamentsLoading && <p className="text-sm text-text-secondary">Loading...</p>}
+        {!tournamentsError && !tournamentsLoading && tournaments?.length === 0 && (
           <Card className="text-center text-sm text-text-secondary">
             No tournaments yet — create your first one to start accepting registrations.
           </Card>
         )}
 
-        <div className="flex flex-col gap-2">
-          {tournaments?.slice(0, 5).map((t) => (
-            <Card key={t.id} className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-medium">{t.name}</p>
-                <p className="text-xs text-text-secondary">
-                  {t.venue} · {new Date(t.startDate).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <TimeframeBadge timeframe={getTournamentTimeframe(t)} />
-                <StatusBadge status={t.status} />
-                <Button size="sm" variant="secondary" onClick={() => setRosterTournamentId(t.id)}>
-                  Registrations
-                </Button>
-                <Button size="sm" variant="ghost" aria-label={`Edit ${t.name}`} onClick={() => setEditingTournament(t)}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label={`Delete ${t.name}`}
-                  loading={deleteTournament.isPending}
-                  onClick={() => handleDelete(t.id, t.name)}
-                >
-                  <Trash2 className="h-4 w-4 text-danger" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+        {!tournamentsError && (
+          <div className="flex flex-col gap-2">
+            {tournaments?.slice(0, 5).map((t) => (
+              <Card key={t.id} className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">{t.name}</p>
+                  <p className="text-xs text-text-secondary">
+                    {t.venue} · {new Date(t.startDate).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TimeframeBadge timeframe={getTournamentTimeframe(t)} />
+                  <StatusBadge status={t.status} />
+                  <Button size="sm" variant="secondary" onClick={() => setRosterTournamentId(t.id)}>
+                    Registrations
+                  </Button>
+                  <Button size="sm" variant="ghost" aria-label={`Edit ${t.name}`} onClick={() => setEditingTournament(t)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Delete ${t.name}`}
+                    loading={deletingId === t.id}
+                    onClick={() => setDeleteTarget(t)}
+                  >
+                    <Trash2 className="h-4 w-4 text-danger" />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {creating && <TournamentFormModal onClose={() => setCreating(false)} />}
@@ -120,6 +129,17 @@ export function AdminOverviewPage() {
         <TournamentFormModal tournament={editingTournament} onClose={() => setEditingTournament(null)} />
       )}
       {rosterTournamentId && <RosterModal tournamentId={rosterTournamentId} onClose={() => setRosterTournamentId(null)} />}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete tournament"
+        message={`Delete "${deleteTarget?.name}"? This permanently removes it and every registration for it. This cannot be undone.`}
+        confirmLabel="Delete tournament"
+        variant="danger"
+        loading={deletingId === deleteTarget?.id}
+      />
     </div>
   );
 }

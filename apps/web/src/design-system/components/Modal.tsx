@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface ModalProps {
   open: boolean;
@@ -22,6 +23,8 @@ interface ModalProps {
 export function Modal({ open, onClose, title, children, footer, closeOnBackdropClick = true }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+
+  useFocusTrap(dialogRef, open);
 
   useEffect(() => {
     if (!open) return;

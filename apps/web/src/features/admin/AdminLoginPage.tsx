@@ -22,7 +22,7 @@ export function AdminLoginPage() {
     e.preventDefault();
     try {
       const result = await adminLogin.mutateAsync({ email, password });
-      setTokens(result.accessToken, result.refreshToken);
+      setTokens(result.accessToken);
       setSession({ type: "ADMIN", profile: result.admin });
       const redirectTo = (location.state as { from?: Location })?.from?.pathname ?? "/admin";
       navigate(redirectTo || "/admin");
