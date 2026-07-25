@@ -23,3 +23,18 @@ export function StumpsOutline(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+/** A batsman mid-stroke, kept intentionally simple (stick-figure line art) so it reads as texture at low opacity, not as a competing illustration. */
+export function BatsmanOutline(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 200 260" fill="none" {...props}>
+      <circle cx="100" cy="38" r="19" stroke="currentColor" strokeWidth="3" />
+      <path d="M100 57 L96 122" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M96 122 L68 188" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M96 122 L124 196" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M99 78 L58 104" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M99 78 L134 68" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M58 104 L36 156" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
+    </svg>
+  );
+}

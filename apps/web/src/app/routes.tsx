@@ -20,7 +20,7 @@ import { QrCheckinPage } from "../features/admin/qr-checkin/QrCheckinPage";
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<PublicShell><LandingPage /></PublicShell>} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/register" element={<PublicShell><PlayerRegistrationWizard /></PublicShell>} />
       <Route path="/login" element={<PublicShell><LoginPage /></PublicShell>} />
 
@@ -35,7 +35,7 @@ export function AppRoutes() {
         }
       />
 
-      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin/login" element={<PublicShell><AdminLoginPage /></PublicShell>} />
       <Route
         path="/admin"
         element={
