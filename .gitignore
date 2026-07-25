@@ -1,7 +1,9 @@
 node_modules/
 dist/
 build/
+.next/
 coverage/
+uploads/
 .env
 .env.*.local
 *.log
