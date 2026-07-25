@@ -1,0 +1,640 @@
+openapi: 3.0.3
+info:
+  title: Cricket Player Identity & Tournament Registration API
+  version: "1.0.0"
+  description: >
+    REST API for one-time player identity verification and repeat, low-friction
+    tournament registration authenticated by mobile + OTP. Served under `/api/v1`.
+servers:
+  - url: http://localhost:4000/api/v1
+    description: Local development
+tags:
+  - name: Auth
+  - name: Players
+  - name: Admin - Verification
+  - name: Admin - Players
+  - name: Tournaments
+  - name: Registrations
+  - name: Communications
+  - name: CheckIn
+  - name: Stats
+
+paths:
+  /auth/otp/request:
+    post:
+      tags: [Auth]
+      summary: Request an OTP for a mobile number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile, purpose]
+              properties:
+                mobile: { type: string, example: "+919876543210" }
+                purpose: { type: string, enum: [REGISTRATION, LOGIN, TOURNAMENT_ENTRY] }
+      responses:
+        "202":
+          description: >
+            OTP dispatched (or queued) to the mobile number. `devCode` is only ever
+            present outside production while SMS_PROVIDER=console — it hands back
+            the code that would otherwise only be visible in server logs, since no
+            real SMS was sent anywhere for a human to read.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  expiresInSeconds: { type: integer }
+                  devCode: { type: string, nullable: true, example: "483920" }
+        "429": { description: Rate limit exceeded (resend cooldown or max attempts window) }
+
+  /auth/otp/verify:
+    post:
+      tags: [Auth]
+      summary: Verify an OTP and receive a short-lived JWT scoped to that mobile number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile, code, purpose]
+              properties:
+                mobile: { type: string }
+                code: { type: string, example: "483920" }
+                purpose: { type: string, enum: [REGISTRATION, LOGIN, TOURNAMENT_ENTRY] }
+      responses:
+        "200":
+          description: OTP verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+                  refreshToken: { type: string }
+                  player: { $ref: "#/components/schemas/PlayerSummary" }
+                  isNewPlayer: { type: boolean }
+        "400": { description: Invalid or expired code }
+        "429": { description: Too many attempts }
+
+  /auth/token/refresh:
+    post:
+      tags: [Auth]
+      summary: Exchange a refresh token for a new access + refresh token pair (rotation)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        "200": { description: New token pair issued }
+        "401": { description: Refresh token invalid, expired, or already rotated }
+
+  /auth/admin/login:
+    post:
+      tags: [Auth]
+      summary: Admin email + password login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200": { description: Login successful, tokens issued }
+        "401": { description: Invalid credentials }
+
+  /players/me:
+    get:
+      tags: [Players]
+      summary: Get the authenticated player's full profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Player profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Player" }
+        "401": { description: Unauthenticated }
+    patch:
+      tags: [Players]
+      summary: Submit a profile edit (goes to PENDING_VERIFICATION if previously VERIFIED changes are sensitive)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlayerProfileInput" }
+      responses:
+        "200": { description: Profile updated }
+        "422": { description: Validation error }
+
+  /players/register:
+    post:
+      tags: [Players]
+      summary: Submit a new player registration (requires a valid REGISTRATION-purpose OTP token)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlayerProfileInput" }
+      responses:
+        "201":
+          description: >
+            Registration submitted, pending admin verification. The response also
+            includes a freshly-issued accessToken/refreshToken pair scoped to the
+            new player.id, replacing the pre-registration "pending" token.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Player"
+                  - type: object
+                    properties:
+                      accessToken: { type: string }
+                      refreshToken: { type: string }
+        "409": { description: A player already exists for this mobile number }
+        "422": { description: Validation error }
+
+  /players/me/photo:
+    post:
+      tags: [Players]
+      summary: Upload/replace profile photo
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo: { type: string, format: binary }
+      responses:
+        "200": { description: Photo stored, optimized, and URL returned }
+        "413": { description: File too large }
+        "415": { description: Unsupported file type }
+
+  /admin/players:
+    get:
+      tags: [Admin - Players]
+      summary: Search/filter players
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [PENDING_VERIFICATION, CHANGES_REQUESTED, VERIFIED, REJECTED, SUSPENDED] }
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Free-text search across name, mobile, player ID
+        - in: query
+          name: city
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 20 }
+      responses:
+        "200": { description: Paginated player list }
+
+  /admin/players/{playerId}:
+    get:
+      tags: [Admin - Players]
+      summary: Get full player detail including medical info and duplicate flags
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: playerId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Player detail }
+        "404": { description: Not found }
+
+  /admin/players/{playerId}/approve:
+    post:
+      tags: [Admin - Verification]
+      summary: Approve a player — issues a permanent Player ID, generates the digital card + QR, sends WhatsApp confirmation
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: playerId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Player approved and verified }
+        "409": { description: Player is not in a state that can be approved }
+
+  /admin/players/{playerId}/reject:
+    post:
+      tags: [Admin - Verification]
+      summary: Reject a player registration with a reason
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "200": { description: Player rejected }
+
+  /admin/players/{playerId}/request-changes:
+    post:
+      tags: [Admin - Verification]
+      summary: Request changes from the player before verification can proceed
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string }
+      responses:
+        "200": { description: Change request recorded and player notified }
+
+  /admin/players/{playerId}/cricket-profile:
+    patch:
+      tags: [Admin - Verification]
+      summary: >
+        Assign or revise a player's cricket profile (role, batting/bowling style,
+        preferred position, experience level). Players never set this themselves —
+        an admin assigns it after reviewing them. Callable independently of
+        approve/reject/request-changes, at any time.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: playerId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssignCricketProfileInput" }
+      responses:
+        "200": { description: Cricket profile assigned }
+        "404": { description: Player not found }
+
+  /admin/duplicates:
+    get:
+      tags: [Admin - Verification]
+      summary: List open duplicate-identity flags
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: List of duplicate flags with both candidate profiles }
+
+  /admin/duplicates/{flagId}/resolve:
+    post:
+      tags: [Admin - Verification]
+      summary: Resolve a duplicate flag (dismiss or confirm+merge)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resolution]
+              properties:
+                resolution: { type: string, enum: [DISMISSED, CONFIRMED_MERGED] }
+      responses:
+        "200": { description: Flag resolved }
+
+  /tournaments:
+    get:
+      tags: [Tournaments]
+      summary: List published tournaments (public)
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [PUBLISHED, REGISTRATION_CLOSED, IN_PROGRESS, COMPLETED] }
+      responses:
+        "200": { description: Tournament list }
+    post:
+      tags: [Tournaments]
+      summary: Create a tournament (admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TournamentInput" }
+      responses:
+        "201": { description: Tournament created (DRAFT) }
+
+  /tournaments/{tournamentId}:
+    get:
+      tags: [Tournaments]
+      summary: Get tournament detail (public)
+      parameters:
+        - in: path
+          name: tournamentId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Tournament detail }
+        "404": { description: Not found }
+    patch:
+      tags: [Tournaments]
+      summary: Update tournament (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: tournamentId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Updated }
+
+  /tournaments/{tournamentId}/publish:
+    post:
+      tags: [Tournaments]
+      summary: Publish a draft tournament (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: tournamentId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Tournament published }
+
+  /tournaments/{tournamentId}/roster:
+    get:
+      tags: [Tournaments]
+      summary: Get the tournament's confirmed roster (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: tournamentId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Roster list with payment + check-in status }
+
+  /registrations:
+    post:
+      tags: [Registrations]
+      summary: Register the authenticated (verified) player for a tournament
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tournamentId, rulesAccepted]
+              properties:
+                tournamentId: { type: string }
+                rulesAccepted: { type: boolean }
+      responses:
+        "201": { description: Registration created (CONFIRMED or PENDING_PAYMENT) }
+        "403": { description: Player is not verified }
+        "409": { description: Already registered for this tournament, or tournament full/closed }
+
+  /registrations/me:
+    get:
+      tags: [Registrations]
+      summary: List the authenticated player's own tournament registrations
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: List of registrations with tournament summaries }
+
+  /registrations/{registrationId}/pay:
+    post:
+      tags: [Registrations]
+      summary: Create a payment order for a PENDING_PAYMENT registration
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: registrationId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Payment order created (client completes via provider SDK) }
+
+  /registrations/{registrationId}/cancel:
+    post:
+      tags: [Registrations]
+      summary: Cancel a registration
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: registrationId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Cancelled }
+
+  /communications/campaigns:
+    post:
+      tags: [Communications]
+      summary: Create and send a bulk message campaign (admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, channel, template, audienceFilter]
+              properties:
+                title: { type: string }
+                channel: { type: string, enum: [SMS, WHATSAPP, EMAIL] }
+                template: { type: string }
+                audienceFilter:
+                  type: object
+                  description: Filter DSL — e.g. { tournamentId, verificationStatus, city }
+                tournamentId: { type: string, nullable: true }
+      responses:
+        "202": { description: Campaign queued for delivery }
+    get:
+      tags: [Communications]
+      summary: List past campaigns with delivery stats (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Campaign list }
+
+  /checkin/scan:
+    post:
+      tags: [CheckIn]
+      summary: Scan a registration QR token and mark attendance (admin/scanner)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [qrToken, tournamentId]
+              properties:
+                qrToken: { type: string }
+                tournamentId: { type: string }
+      responses:
+        "200": { description: Checked in }
+        "404": { description: QR token does not match an active registration for this tournament }
+        "409": { description: Already checked in }
+
+  /checkin/{tournamentId}/roster:
+    get:
+      tags: [CheckIn]
+      summary: Live attendance roster for a tournament (admin/scanner)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: tournamentId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Roster with checked-in counts }
+
+  /stats/players/{playerId}:
+    get:
+      tags: [Stats]
+      summary: Get a player's cross-tournament stat summary
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: playerId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Aggregated stats }
+
+  /healthz:
+    get:
+      tags: [Auth]
+      summary: Liveness probe
+      responses: { "200": { description: OK } }
+
+  /readyz:
+    get:
+      tags: [Auth]
+      summary: Readiness probe (DB + Redis reachable)
+      responses:
+        "200": { description: Ready }
+        "503": { description: Not ready }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PlayerSummary:
+      type: object
+      properties:
+        id: { type: string }
+        playerId: { type: string, nullable: true }
+        fullName: { type: string }
+        verificationStatus:
+          type: string
+          enum: [PENDING_VERIFICATION, CHANGES_REQUESTED, VERIFIED, REJECTED, SUSPENDED]
+
+    Player:
+      allOf:
+        - $ref: "#/components/schemas/PlayerSummary"
+        - $ref: "#/components/schemas/PlayerProfileInput"
+
+    PlayerProfileInput:
+      type: object
+      required:
+        - fullName
+        - dateOfBirth
+        - gender
+        - addressLine1
+        - city
+        - state
+        - country
+        - pincode
+        - jerseySize
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 100 }
+        dateOfBirth: { type: string, format: date }
+        gender: { type: string, enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY] }
+        email: { type: string, format: email, nullable: true }
+        cricketRole:
+          type: string
+          nullable: true
+          enum: [BATTER, BOWLER, ALL_ROUNDER, WICKET_KEEPER]
+          description: Not set by the player — assigned by an admin via PATCH /admin/players/{playerId}/cricket-profile.
+        battingStyle: { type: string, nullable: true, enum: [RIGHT_HAND, LEFT_HAND] }
+        bowlingStyle:
+          type: string
+          nullable: true
+          enum: [RIGHT_ARM_FAST, RIGHT_ARM_SPIN, LEFT_ARM_FAST, LEFT_ARM_SPIN, NONE]
+        preferredBattingPosition: { type: integer, nullable: true, minimum: 1, maximum: 11 }
+        experienceLevel: { type: string, nullable: true, enum: [BEGINNER, INTERMEDIATE, ADVANCED, PROFESSIONAL] }
+        addressLine1: { type: string }
+        addressLine2: { type: string, nullable: true }
+        city: { type: string }
+        state: { type: string }
+        country: { type: string }
+        pincode: { type: string }
+        emergencyContactName: { type: string, nullable: true, description: Optional — a player may not have this on hand at registration time. }
+        emergencyContactRelation: { type: string, nullable: true }
+        emergencyContactPhone: { type: string, nullable: true }
+        jerseySize: { type: string, enum: [XS, S, M, L, XL, XXL, XXXL] }
+        jerseyNumberPref1: { type: string, nullable: true }
+        jerseyNumberPref2: { type: string, nullable: true }
+        jerseyName: { type: string, nullable: true }
+        medicalInfo:
+          type: object
+          nullable: true
+          properties:
+            bloodGroup: { type: string }
+            allergies: { type: string }
+            conditions: { type: string }
+            medication: { type: string }
+
+    AssignCricketProfileInput:
+      type: object
+      required: [cricketRole, battingStyle, preferredBattingPosition, experienceLevel]
+      properties:
+        cricketRole: { type: string, enum: [BATTER, BOWLER, ALL_ROUNDER, WICKET_KEEPER] }
+        battingStyle: { type: string, enum: [RIGHT_HAND, LEFT_HAND] }
+        bowlingStyle:
+          type: string
+          default: NONE
+          enum: [RIGHT_ARM_FAST, RIGHT_ARM_SPIN, LEFT_ARM_FAST, LEFT_ARM_SPIN, NONE]
+        preferredBattingPosition: { type: integer, minimum: 1, maximum: 11 }
+        experienceLevel: { type: string, enum: [BEGINNER, INTERMEDIATE, ADVANCED, PROFESSIONAL] }
+
+    TournamentInput:
+      type: object
+      required: [name, venue, startDate, endDate, registrationOpenAt, registrationCloseAt]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        venue: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        registrationOpenAt: { type: string, format: date-time }
+        registrationCloseAt: { type: string, format: date-time }
+        maxParticipants: { type: integer }
+        entryFee: { type: number, format: decimal }
+        feeRequired: { type: boolean }
+        rulesMarkdown: { type: string }

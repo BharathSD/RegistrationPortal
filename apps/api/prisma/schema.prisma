@@ -1,0 +1,412 @@
+// Cricket Player Identity & Tournament Registration Platform
+// Prisma schema — see docs/ERD.md for the conceptual diagram this mirrors.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum CricketRole {
+  BATTER
+  BOWLER
+  ALL_ROUNDER
+  WICKET_KEEPER
+}
+
+enum BattingStyle {
+  RIGHT_HAND
+  LEFT_HAND
+}
+
+enum BowlingStyle {
+  RIGHT_ARM_FAST
+  RIGHT_ARM_SPIN
+  LEFT_ARM_FAST
+  LEFT_ARM_SPIN
+  NONE
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  PROFESSIONAL
+}
+
+enum JerseySize {
+  XS
+  S
+  M
+  L
+  XL
+  XXL
+  XXXL
+}
+
+enum VerificationStatus {
+  PENDING_VERIFICATION
+  CHANGES_REQUESTED
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  LOGIN
+  TOURNAMENT_ENTRY
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  TOURNAMENT_ADMIN
+  SCANNER
+}
+
+enum TournamentStatus {
+  DRAFT
+  PUBLISHED
+  REGISTRATION_CLOSED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RegistrationStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CHECKED_IN
+  CANCELLED
+}
+
+enum PaymentStatus {
+  CREATED
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum DuplicateSignal {
+  NAME_DOB_MATCH
+  EMERGENCY_CONTACT_REUSE
+  PHOTO_HASH_MATCH
+}
+
+enum DuplicateFlagStatus {
+  OPEN
+  DISMISSED
+  CONFIRMED_MERGED
+}
+
+enum MessageChannel {
+  SMS
+  WHATSAPP
+  EMAIL
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  FAILED
+  DELIVERED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model Player {
+  id       String  @id @default(uuid())
+  playerId String? @unique @map("player_id") // issued only on approval
+
+  mobile String @unique
+  fullName      String   @map("full_name")
+  dateOfBirth   DateTime @map("date_of_birth") @db.Date
+  gender        Gender
+  email         String?
+  photoUrl      String?  @map("photo_url")
+  photoHash     String?  @map("photo_hash") // perceptual hash, duplicate detection
+
+  // Not collected at self-registration — admins assign a player's cricket
+  // profile after reviewing them (see AssignCricketProfileUseCase). Null
+  // means "not yet assigned".
+  cricketRole              CricketRole?     @map("cricket_role")
+  battingStyle             BattingStyle?    @map("batting_style")
+  bowlingStyle             BowlingStyle?    @map("bowling_style")
+  preferredBattingPosition Int?             @map("preferred_batting_position")
+  experienceLevel          ExperienceLevel? @map("experience_level")
+
+  addressLine1 String  @map("address_line1")
+  addressLine2 String? @map("address_line2")
+  city         String
+  state        String
+  country      String
+  pincode      String
+
+  // Optional — a player may not have this on hand at registration time.
+  emergencyContactName     String? @map("emergency_contact_name")
+  emergencyContactRelation String? @map("emergency_contact_relation")
+  emergencyContactPhone    String? @map("emergency_contact_phone")
+
+  jerseySize        JerseySize @map("jersey_size")
+  jerseyNumberPref1 String?    @map("jersey_number_pref1")
+  jerseyNumberPref2 String?    @map("jersey_number_pref2")
+  jerseyName        String?    @map("jersey_name")
+
+  medicalInfo MedicalInfo?
+
+  verificationStatus VerificationStatus @default(PENDING_VERIFICATION) @map("verification_status")
+  rejectionReason    String?            @map("rejection_reason")
+  changeRequestNote  String?            @map("change_request_note")
+  verifiedByAdminId  String?            @map("verified_by_admin_id")
+  verifiedByAdmin    AdminUser?         @relation("PlayerVerifiedBy", fields: [verifiedByAdminId], references: [id])
+  verifiedAt         DateTime?          @map("verified_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  otpChallenges   OtpChallenge[]
+  refreshTokens   RefreshToken[]
+  registrations   Registration[]
+  stats           PlayerStat[]
+  messageLogs     MessageLog[]
+  flagsAsPlayer   DuplicateFlag[]    @relation("FlagPlayer")
+  flagsAsDuplicate DuplicateFlag[]   @relation("FlagSuspect")
+
+  @@index([verificationStatus])
+  @@index([city])
+  @@map("players")
+}
+
+model MedicalInfo {
+  id         String  @id @default(uuid())
+  playerId   String  @unique @map("player_id")
+  player     Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  bloodGroup String? @map("blood_group")
+  allergies  String?
+  conditions String?
+  medication String?
+
+  @@map("medical_info")
+}
+
+model OtpChallenge {
+  id         String     @id @default(uuid())
+  mobile     String
+  codeHash   String     @map("code_hash")
+  purpose    OtpPurpose
+  attempts   Int        @default(0)
+  expiresAt  DateTime   @map("expires_at")
+  consumedAt DateTime?  @map("consumed_at")
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  playerId String? @map("player_id")
+  player   Player? @relation(fields: [playerId], references: [id])
+
+  @@index([mobile, purpose])
+  @@map("otp_challenges")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  playerId  String?   @map("player_id")
+  player    Player?   @relation(fields: [playerId], references: [id])
+  adminId   String?   @map("admin_id")
+  admin     AdminUser? @relation(fields: [adminId], references: [id])
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  fullName     String    @map("full_name")
+  role         AdminRole
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  verifiedPlayers   Player[]          @relation("PlayerVerifiedBy")
+  createdTournaments Tournament[]     @relation("TournamentCreatedBy")
+  auditLogs         AuditLog[]
+  campaigns         MessageCampaign[]
+  checkins          Checkin[]
+  refreshTokens     RefreshToken[]
+
+  @@map("admin_users")
+}
+
+model Tournament {
+  id                    String           @id @default(uuid())
+  name                  String
+  slug                  String           @unique
+  description           String?
+  venue                 String
+  startDate             DateTime         @map("start_date") @db.Date
+  endDate               DateTime         @map("end_date") @db.Date
+  registrationOpenAt    DateTime         @map("registration_open_at")
+  registrationCloseAt   DateTime         @map("registration_close_at")
+  maxParticipants       Int?             @map("max_participants")
+  entryFee              Decimal          @default(0) @map("entry_fee") @db.Decimal(10, 2)
+  feeRequired           Boolean          @default(false) @map("fee_required")
+  rulesMarkdown         String?          @map("rules_markdown")
+  status                TournamentStatus @default(DRAFT)
+
+  createdByAdminId String    @map("created_by_admin_id")
+  createdByAdmin   AdminUser @relation("TournamentCreatedBy", fields: [createdByAdminId], references: [id])
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  registrations Registration[]
+  checkins      Checkin[]
+  stats         PlayerStat[]
+  campaigns     MessageCampaign[]
+
+  @@index([status])
+  @@map("tournaments")
+}
+
+model Registration {
+  id               String             @id @default(uuid())
+  playerId         String             @map("player_id")
+  player           Player             @relation(fields: [playerId], references: [id])
+  tournamentId     String             @map("tournament_id")
+  tournament       Tournament         @relation(fields: [tournamentId], references: [id])
+  status           RegistrationStatus @default(PENDING_PAYMENT)
+  rulesAccepted    Boolean            @default(false) @map("rules_accepted")
+  rulesAcceptedAt  DateTime?          @map("rules_accepted_at")
+  qrToken          String             @unique @map("qr_token")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  payment Payment?
+  checkin Checkin?
+
+  @@unique([playerId, tournamentId])
+  @@map("registrations")
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  registrationId    String        @unique @map("registration_id")
+  registration      Registration  @relation(fields: [registrationId], references: [id])
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR")
+  status            PaymentStatus @default(CREATED)
+  providerOrderId   String?       @map("provider_order_id")
+  providerPaymentId String?       @map("provider_payment_id")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  @@map("payments")
+}
+
+model Checkin {
+  id               String       @id @default(uuid())
+  registrationId   String       @unique @map("registration_id")
+  registration     Registration @relation(fields: [registrationId], references: [id])
+  tournamentId     String       @map("tournament_id")
+  tournament       Tournament   @relation(fields: [tournamentId], references: [id])
+  scannedByAdminId String       @map("scanned_by_admin_id")
+  scannedByAdmin   AdminUser    @relation(fields: [scannedByAdminId], references: [id])
+  scannedAt        DateTime     @default(now()) @map("scanned_at")
+  deviceInfo       String?      @map("device_info")
+
+  @@map("checkins")
+}
+
+model DuplicateFlag {
+  id                         String              @id @default(uuid())
+  playerId                   String              @map("player_id")
+  player                     Player              @relation("FlagPlayer", fields: [playerId], references: [id])
+  suspectedDuplicatePlayerId String              @map("suspected_duplicate_player_id")
+  suspectedDuplicatePlayer   Player              @relation("FlagSuspect", fields: [suspectedDuplicatePlayerId], references: [id])
+  signal                     DuplicateSignal
+  status                     DuplicateFlagStatus @default(OPEN)
+  createdAt                  DateTime            @default(now()) @map("created_at")
+
+  @@index([status])
+  @@map("duplicate_flags")
+}
+
+model MessageCampaign {
+  id               String         @id @default(uuid())
+  title            String
+  channel          MessageChannel
+  template         String
+  audienceFilter   Json           @map("audience_filter")
+  tournamentId     String?        @map("tournament_id")
+  tournament       Tournament?    @relation(fields: [tournamentId], references: [id])
+  createdByAdminId String         @map("created_by_admin_id")
+  createdByAdmin   AdminUser      @relation(fields: [createdByAdminId], references: [id])
+  sentAt           DateTime?      @map("sent_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  logs MessageLog[]
+
+  @@map("message_campaigns")
+}
+
+model MessageLog {
+  id                String          @id @default(uuid())
+  campaignId        String          @map("campaign_id")
+  campaign          MessageCampaign @relation(fields: [campaignId], references: [id])
+  playerId          String          @map("player_id")
+  player            Player          @relation(fields: [playerId], references: [id])
+  status            MessageStatus   @default(QUEUED)
+  providerMessageId String?         @map("provider_message_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+
+  @@map("message_logs")
+}
+
+model PlayerStat {
+  id             String     @id @default(uuid())
+  playerId       String     @map("player_id")
+  player         Player     @relation(fields: [playerId], references: [id])
+  tournamentId   String     @map("tournament_id")
+  tournament     Tournament @relation(fields: [tournamentId], references: [id])
+  matchesPlayed  Int        @default(0) @map("matches_played")
+  runsScored     Int        @default(0) @map("runs_scored")
+  wicketsTaken   Int        @default(0) @map("wickets_taken")
+  catches        Int        @default(0)
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  @@unique([playerId, tournamentId])
+  @@map("player_stats")
+}
+
+model AuditLog {
+  id            String    @id @default(uuid())
+  actorAdminId  String?   @map("actor_admin_id")
+  actorAdmin    AdminUser? @relation(fields: [actorAdminId], references: [id])
+  action        String
+  entityType    String    @map("entity_type")
+  entityId      String    @map("entity_id")
+  before        Json?
+  after         Json?
+  ipAddress     String?   @map("ip_address")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}

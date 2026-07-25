@@ -1,0 +1,50 @@
+import type { Request, Response } from "express";
+import type { TournamentInput, TournamentStatus } from "@cricket-platform/shared";
+
+export interface TournamentsUseCases {
+  createTournament: (input: TournamentInput, adminId: string) => Promise<unknown>;
+  listTournaments: (status?: TournamentStatus) => Promise<unknown>;
+  getTournament: (id: string) => Promise<unknown>;
+  updateTournament: (id: string, changes: Partial<TournamentInput>) => Promise<unknown>;
+  publishTournament: (id: string) => Promise<unknown>;
+  getRoster: (id: string) => Promise<unknown>;
+}
+
+export function makeTournamentsController(useCases: TournamentsUseCases) {
+  return {
+    async create(req: Request, res: Response) {
+      const tournament = await useCases.createTournament(req.body, req.auth!.sub);
+      res.status(201).json(tournament);
+    },
+
+    async list(req: Request, res: Response) {
+      const tournaments = (await useCases.listTournaments(
+        req.query.status as TournamentStatus | undefined,
+      )) as Array<{ status: TournamentStatus }>;
+      const isAdmin = req.auth?.type === "ADMIN";
+      // Draft tournaments are an organizer's working copy — never expose them to anonymous/player callers.
+      const visible = isAdmin ? tournaments : tournaments.filter((t) => t.status !== "DRAFT");
+      res.status(200).json(visible);
+    },
+
+    async get(req: Request, res: Response) {
+      const tournament = await useCases.getTournament(req.params.tournamentId);
+      res.status(200).json(tournament);
+    },
+
+    async update(req: Request, res: Response) {
+      const tournament = await useCases.updateTournament(req.params.tournamentId, req.body);
+      res.status(200).json(tournament);
+    },
+
+    async publish(req: Request, res: Response) {
+      const tournament = await useCases.publishTournament(req.params.tournamentId);
+      res.status(200).json(tournament);
+    },
+
+    async roster(req: Request, res: Response) {
+      const roster = await useCases.getRoster(req.params.tournamentId);
+      res.status(200).json(roster);
+    },
+  };
+}

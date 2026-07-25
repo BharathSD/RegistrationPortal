@@ -1,0 +1,55 @@
+/**
+ * Design tokens — see docs/DESIGN_SYSTEM.md ("Stadium Lights"). Single
+ * source of truth for both themes; components never hard-code a hex value.
+ */
+:root,
+:root[data-theme="light"] {
+  --color-bg-canvas: #f7f8fb;
+  --color-bg-surface: #ffffff;
+  --color-bg-surface-raised: #ffffff;
+  --color-border: #e3e6ee;
+  --color-text-primary: #10131c;
+  --color-text-secondary: #5b6472;
+
+  --color-primary-500: #1651e0;
+  --color-primary-600: #0f3fbd;
+  --color-accent-gold-500: #d69a1f;
+  --color-success-500: #1e9e63;
+  --color-warning-500: #d6821f;
+  --color-danger-500: #d6392f;
+
+  --color-pitch-gradient: linear-gradient(135deg, #0b3d2e 0%, #1651e0 100%);
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --color-bg-canvas: #0b0f1a;
+  --color-bg-surface: #131826;
+  --color-bg-surface-raised: #1b2233;
+  --color-border: #242c40;
+  --color-text-primary: #f3f5fa;
+  --color-text-secondary: #9aa4b8;
+
+  --color-primary-500: #5b8cff;
+  --color-primary-600: #7aa0ff;
+  --color-accent-gold-500: #f2b93e;
+  --color-success-500: #3fcb8a;
+  --color-warning-500: #f2a93e;
+  --color-danger-500: #f2564c;
+
+  --color-pitch-gradient: linear-gradient(135deg, #06251c 0%, #0b1b4a 100%);
+
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

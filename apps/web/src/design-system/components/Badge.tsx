@@ -1,0 +1,63 @@
+import clsx from "clsx";
+import { CheckCircle2, Clock, XCircle, AlertTriangle, ScanLine } from "lucide-react";
+
+type BadgeTone = "success" | "warning" | "danger" | "primary" | "neutral";
+
+const TONE_CLASSES: Record<BadgeTone, string> = {
+  success: "bg-success/10 text-success",
+  warning: "bg-warning/10 text-warning",
+  danger: "bg-danger/10 text-danger",
+  primary: "bg-primary/10 text-primary",
+  neutral: "bg-text-secondary/10 text-text-secondary",
+};
+
+const TONE_ICON: Record<BadgeTone, typeof CheckCircle2> = {
+  success: CheckCircle2,
+  warning: Clock,
+  danger: XCircle,
+  primary: ScanLine,
+  neutral: AlertTriangle,
+};
+
+export function Badge({ tone, children }: { tone: BadgeTone; children: string }) {
+  const Icon = TONE_ICON[tone];
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
+        TONE_CLASSES[tone],
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
+
+const STATUS_TONE: Record<string, BadgeTone> = {
+  VERIFIED: "success",
+  CONFIRMED: "success",
+  DELIVERED: "success",
+  PENDING_VERIFICATION: "warning",
+  PENDING_PAYMENT: "warning",
+  CHANGES_REQUESTED: "warning",
+  QUEUED: "warning",
+  REJECTED: "danger",
+  CANCELLED: "danger",
+  FAILED: "danger",
+  SUSPENDED: "danger",
+  CHECKED_IN: "primary",
+  SENT: "primary",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  PENDING_VERIFICATION: "Pending",
+  CHANGES_REQUESTED: "Changes requested",
+  PENDING_PAYMENT: "Payment pending",
+  CHECKED_IN: "Checked in",
+};
+
+/** Maps a domain status string (VerificationStatus | RegistrationStatus | MessageStatus | ...) straight to a themed Badge. */
+export function StatusBadge({ status }: { status: string }) {
+  return <Badge tone={STATUS_TONE[status] ?? "neutral"}>{STATUS_LABEL[status] ?? status.replace(/_/g, " ")}</Badge>;
+}
