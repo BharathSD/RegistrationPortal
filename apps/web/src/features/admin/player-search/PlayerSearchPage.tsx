@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Download, Pencil, Trash2, User } from "lucide-react";
+import { Download, Pencil, Plus, Trash2, User } from "lucide-react";
 import { Button, Card, ConfirmDialog, Modal, QueryError, Skeleton } from "../../../design-system";
 import { Input, Select } from "../../../design-system/components/Field";
 import { StatusBadge } from "../../../design-system/components/Badge";
@@ -8,6 +8,7 @@ import { useToast } from "../../../design-system/components/Toast";
 import { ApiError } from "../../../lib/api/client";
 import { useAdminPlayerDetail, useAdminPlayers, useDeletePlayer } from "../../../lib/api/admin";
 import { PlayerTypeEditor } from "../shared/PlayerTypeEditor";
+import { AddPlayerModal } from "../shared/AddPlayerModal";
 import type { VerificationStatus } from "@cricket-platform/shared";
 
 const STATUS_OPTIONS: Array<{ value: VerificationStatus | ""; label: string }> = [
@@ -45,6 +46,7 @@ export function PlayerSearchPage() {
   const [editPlayerId, setEditPlayerId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
 
   async function handleConfirmDelete() {
     if (!deleteTarget) return;
@@ -64,26 +66,31 @@ export function PlayerSearchPage() {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-display text-xl font-bold">Player Search</h1>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={!data?.items.length}
-          onClick={() =>
-            exportToCsv(
-              (data?.items ?? []).map((p) => ({
-                playerId: p.playerId,
-                fullName: p.fullName,
-                mobile: p.mobile,
-                city: p.city,
-                state: p.state,
-                role: p.playerType,
-                status: p.verificationStatus,
-              })),
-            )
-          }
-        >
-          <Download className="h-4 w-4" /> Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => setShowAddPlayer(true)}>
+            <Plus className="h-4 w-4" /> Add player
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!data?.items.length}
+            onClick={() =>
+              exportToCsv(
+                (data?.items ?? []).map((p) => ({
+                  playerId: p.playerId,
+                  fullName: p.fullName,
+                  mobile: p.mobile,
+                  city: p.city,
+                  state: p.state,
+                  role: p.playerType,
+                  status: p.verificationStatus,
+                })),
+              )
+            }
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -154,6 +161,7 @@ export function PlayerSearchPage() {
       {data && <p className="mt-2 text-xs text-text-secondary">{data.total} total players match this filter.</p>}
 
       {editPlayerId && <PlayerEditModal playerId={editPlayerId} onClose={() => setEditPlayerId(null)} />}
+      {showAddPlayer && <AddPlayerModal onClose={() => setShowAddPlayer(false)} />}
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}

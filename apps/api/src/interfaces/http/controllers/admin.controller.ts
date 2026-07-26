@@ -1,10 +1,11 @@
 import type { Request, Response } from "express";
 import type { PlayerSearchFilters } from "../../../domain/repositories/PlayerRepository";
-import type { AssignCricketProfileInput, DuplicateFlagStatus } from "@cricket-platform/shared";
+import type { AdminCreatePlayerInput, AssignCricketProfileInput, DuplicateFlagStatus } from "@cricket-platform/shared";
 
 export interface AdminUseCases {
   searchPlayers: (filters: PlayerSearchFilters) => Promise<unknown>;
   getPlayerDetail: (playerId: string) => Promise<unknown>;
+  createPlayer: (input: AdminCreatePlayerInput, adminId: string) => Promise<unknown>;
   approvePlayer: (playerId: string, adminId: string) => Promise<unknown>;
   rejectPlayer: (playerId: string, reason: string, adminId: string) => Promise<unknown>;
   requestChanges: (playerId: string, message: string, adminId: string) => Promise<unknown>;
@@ -24,6 +25,11 @@ export function makeAdminController(useCases: AdminUseCases) {
     async getPlayerDetail(req: Request, res: Response) {
       const player = await useCases.getPlayerDetail(req.params.playerId);
       res.status(200).json(player);
+    },
+
+    async createPlayer(req: Request, res: Response) {
+      const player = await useCases.createPlayer(req.body, req.auth!.sub);
+      res.status(201).json(player);
     },
 
     async approve(req: Request, res: Response) {

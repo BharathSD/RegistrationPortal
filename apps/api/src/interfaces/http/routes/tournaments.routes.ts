@@ -3,7 +3,7 @@ import { asyncHandler } from "../asyncHandler";
 import { validateRequest } from "../middleware/validateRequest";
 import { authenticate, optionalAuthenticate, requireAdmin } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
-import { tournamentInputSchema, tournamentUpdateSchema } from "@cricket-platform/shared";
+import { adminAddToRosterSchema, tournamentInputSchema, tournamentUpdateSchema } from "@cricket-platform/shared";
 import type { TournamentsUseCases } from "../controllers/tournaments.controller";
 import { makeTournamentsController } from "../controllers/tournaments.controller";
 
@@ -26,6 +26,12 @@ export function tournamentsRoutes(useCases: TournamentsUseCases): Router {
   );
   router.post("/:tournamentId/publish", ...adminOnly, asyncHandler(controller.publish));
   router.get("/:tournamentId/roster", ...adminOnly, asyncHandler(controller.roster));
+  router.post(
+    "/:tournamentId/roster",
+    ...adminOnly,
+    validateRequest(adminAddToRosterSchema),
+    asyncHandler(controller.addToRoster),
+  );
   router.delete("/:tournamentId/roster/:registrationId", ...adminOnly, asyncHandler(controller.removeFromRoster));
   router.delete("/:tournamentId", ...adminOnly, asyncHandler(controller.remove));
 

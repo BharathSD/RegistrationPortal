@@ -37,3 +37,12 @@ export const registerForTournamentSchema = z.object({
   }),
 });
 export type RegisterForTournamentInput = z.infer<typeof registerForTournamentSchema>;
+
+/** Admin-only: registers an already-VERIFIED player into a tournament directly, for players who can't complete self-service registration on their own (assisted in person, over the phone, etc). Rules acceptance is still required — the admin confirms it on the player's behalf. */
+export const adminAddToRosterSchema = z.object({
+  playerId: z.string().uuid(),
+  rulesAccepted: z.literal(true, {
+    errorMap: () => ({ message: "Confirm the player has accepted the tournament rules" }),
+  }),
+});
+export type AdminAddToRosterInput = z.infer<typeof adminAddToRosterSchema>;

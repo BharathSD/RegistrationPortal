@@ -5,6 +5,7 @@ import type {
   VerificationStatus,
   DuplicateFlagStatus,
   AssignCricketProfileInput,
+  AdminCreatePlayerInput,
 } from "@cricket-platform/shared";
 import { apiRequest } from "./client";
 
@@ -32,6 +33,15 @@ export function useAdminPlayers(params: PlayerSearchParams) {
       apiRequest<PaginatedResult<Player>>(
         `/admin/players${toQueryString({ ...params, page: params.page ?? 1, pageSize: params.pageSize ?? 20 })}`,
       ),
+  });
+}
+
+export function useAdminCreatePlayer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AdminCreatePlayerInput) =>
+      apiRequest<Player>("/admin/players", { method: "POST", body: input }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "players"] }),
   });
 }
 

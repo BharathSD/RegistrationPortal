@@ -37,6 +37,7 @@ import { makeUploadPhotoUseCase } from "./application/players/UploadPhotoUseCase
 
 import { makeSearchPlayersUseCase } from "./application/admin/SearchPlayersUseCase";
 import { makeGetPlayerDetailUseCase } from "./application/admin/GetPlayerDetailUseCase";
+import { makeAdminCreatePlayerUseCase } from "./application/admin/AdminCreatePlayerUseCase";
 import { makeApprovePlayerUseCase } from "./application/admin/ApprovePlayerUseCase";
 import { makeRejectPlayerUseCase } from "./application/admin/RejectPlayerUseCase";
 import { makeRequestChangesUseCase } from "./application/admin/RequestChangesUseCase";
@@ -55,6 +56,7 @@ import { makeGetRosterUseCase } from "./application/tournaments/GetRosterUseCase
 import { makeDeleteTournamentUseCase } from "./application/tournaments/DeleteTournamentUseCase";
 
 import { makeRegisterForTournamentUseCase } from "./application/registrations/RegisterForTournamentUseCase";
+import { makeAdminRegisterPlayerForTournamentUseCase } from "./application/registrations/AdminRegisterPlayerForTournamentUseCase";
 import { makeCreatePaymentOrderUseCase } from "./application/registrations/CreatePaymentOrderUseCase";
 import { makeCancelRegistrationUseCase } from "./application/registrations/CancelRegistrationUseCase";
 import { makeListMyRegistrationsUseCase } from "./application/registrations/ListMyRegistrationsUseCase";
@@ -121,6 +123,11 @@ export function buildContainer() {
   const admin = {
     searchPlayers: makeSearchPlayersUseCase({ playerRepo }),
     getPlayerDetail: makeGetPlayerDetailUseCase({ playerRepo }),
+    createPlayer: makeAdminCreatePlayerUseCase({
+      registerPlayer: players.registerPlayer,
+      detectDuplicates: players.detectDuplicates,
+      auditLogRepo,
+    }),
     approvePlayer: makeApprovePlayerUseCase({ playerRepo, auditLogRepo, whatsAppProvider }),
     rejectPlayer: makeRejectPlayerUseCase({ playerRepo, auditLogRepo }),
     requestChanges: makeRequestChangesUseCase({ playerRepo, auditLogRepo }),
@@ -129,6 +136,15 @@ export function buildContainer() {
     resolveDuplicateFlag: makeResolveDuplicateFlagUseCase({ duplicateFlagRepo, auditLogRepo }),
     deletePlayer: makeDeletePlayerUseCase({ playerRepo, refreshTokenRepo, auditLogRepo }),
   };
+
+  // Shared by self-service registration and the admin-assisted roster-add
+  // path below — same eligibility checks either way, only the actor differs.
+  const registerForTournament = makeRegisterForTournamentUseCase({
+    playerRepo,
+    tournamentRepo,
+    registrationRepo,
+    whatsAppProvider,
+  });
 
   const tournaments = {
     createTournament: makeCreateTournamentUseCase({ tournamentRepo }),
@@ -139,15 +155,11 @@ export function buildContainer() {
     getRoster: makeGetRosterUseCase({ registrationRepo }),
     deleteTournament: makeDeleteTournamentUseCase({ tournamentRepo, auditLogRepo }),
     removeRegistration: makeRemoveRegistrationUseCase({ registrationRepo, auditLogRepo }),
+    addPlayerToRoster: makeAdminRegisterPlayerForTournamentUseCase({ registerForTournament, auditLogRepo }),
   };
 
   const registrations = {
-    registerForTournament: makeRegisterForTournamentUseCase({
-      playerRepo,
-      tournamentRepo,
-      registrationRepo,
-      whatsAppProvider,
-    }),
+    registerForTournament,
     createPaymentOrder: makeCreatePaymentOrderUseCase({ registrationRepo, paymentRepo, paymentProvider }),
     cancelRegistration: makeCancelRegistrationUseCase({ registrationRepo }),
     listMyRegistrations: makeListMyRegistrationsUseCase({ registrationRepo }),

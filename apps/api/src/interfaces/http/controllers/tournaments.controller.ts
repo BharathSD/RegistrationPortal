@@ -10,6 +10,11 @@ export interface TournamentsUseCases {
   getRoster: (id: string) => Promise<unknown>;
   deleteTournament: (id: string, adminId: string) => Promise<void>;
   removeRegistration: (tournamentId: string, registrationId: string, adminId: string) => Promise<void>;
+  addPlayerToRoster: (
+    tournamentId: string,
+    playerId: string,
+    adminId: string,
+  ) => Promise<{ registration: unknown; alreadyExisted: boolean }>;
 }
 
 export function makeTournamentsController(useCases: TournamentsUseCases) {
@@ -57,6 +62,15 @@ export function makeTournamentsController(useCases: TournamentsUseCases) {
     async removeFromRoster(req: Request, res: Response) {
       await useCases.removeRegistration(req.params.tournamentId, req.params.registrationId, req.auth!.sub);
       res.status(204).send();
+    },
+
+    async addToRoster(req: Request, res: Response) {
+      const { registration, alreadyExisted } = await useCases.addPlayerToRoster(
+        req.params.tournamentId,
+        req.body.playerId,
+        req.auth!.sub,
+      );
+      res.status(alreadyExisted ? 200 : 201).json(registration);
     },
   };
 }

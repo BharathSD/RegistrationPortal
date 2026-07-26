@@ -4,6 +4,7 @@ import { validateRequest } from "../middleware/validateRequest";
 import { authenticate, requireAdmin } from "../middleware/auth";
 import { requireRole } from "../middleware/rbac";
 import {
+  adminCreatePlayerSchema,
   assignCricketProfileSchema,
   playerSearchQuerySchema,
   rejectPlayerSchema,
@@ -22,6 +23,7 @@ export function adminRoutes(useCases: AdminUseCases): Router {
   router.use(authenticate, requireAdmin, requireRole("ADMIN"));
 
   router.get("/players", validateRequest(playerSearchQuerySchema, "query"), asyncHandler(controller.searchPlayers));
+  router.post("/players", validateRequest(adminCreatePlayerSchema), asyncHandler(controller.createPlayer));
   router.get("/players/:playerId", asyncHandler(controller.getPlayerDetail));
   router.post("/players/:playerId/approve", asyncHandler(controller.approve));
   router.post("/players/:playerId/reject", validateRequest(rejectPlayerSchema), asyncHandler(controller.reject));

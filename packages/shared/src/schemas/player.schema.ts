@@ -71,6 +71,20 @@ export const playerSelfInputSchema = playerProfileSchema.omit({
 });
 export type PlayerSelfInput = z.infer<typeof playerSelfInputSchema>;
 
+/**
+ * Admin-only: creates a player profile on behalf of someone who can't complete
+ * self-registration themselves (no smartphone, unfamiliar with the OTP flow,
+ * assisted in person at a registration desk, etc). Same required fields as
+ * self-registration — mobile is the one addition, since there's no OTP step
+ * to have already captured it. Player type is still omitted: an admin only
+ * ever assigns it during verification review, never at creation, same as
+ * self-registered players.
+ */
+export const adminCreatePlayerSchema = playerSelfInputSchema.extend({
+  mobile: z.string().regex(MOBILE_REGEX, "Enter a valid mobile number in E.164 format, e.g. +919876543210"),
+});
+export type AdminCreatePlayerInput = z.infer<typeof adminCreatePlayerSchema>;
+
 /** Admin-only: assigns/reassigns a player's type while reviewing them. Nothing else about their profile is admin-editable. */
 export const assignCricketProfileSchema = z.object({
   playerType: z.enum(PLAYER_TYPES),
