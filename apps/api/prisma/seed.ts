@@ -108,16 +108,21 @@ async function main() {
   const createdPlayers = [];
   for (const p of players) {
     const { playerId, verificationStatus, ...rest } = p;
-    const player = await prisma.player.upsert({
-      where: { mobile: p.mobile },
-      update: {},
-      create: {
-        ...rest,
-        playerId: playerId ?? undefined,
-        verificationStatus: verificationStatus ?? "VERIFIED",
-        ...(playerId ? { verifiedByAdminId: admin.id, verifiedAt: new Date() } : {}),
-      },
-    });
+    // mobile isn't DB-unique on its own (see the partial-index comment on
+    // the schema field) so this can't be a prisma.player.upsert() keyed on
+    // it — findFirst + conditional create, same workaround as
+    // PrismaPlayerRepository.findByMobile.
+    const existing = await prisma.player.findFirst({ where: { mobile: p.mobile, deletedAt: null } });
+    const player =
+      existing ??
+      (await prisma.player.create({
+        data: {
+          ...rest,
+          playerId: playerId ?? undefined,
+          verificationStatus: verificationStatus ?? "VERIFIED",
+          ...(playerId ? { verifiedByAdminId: admin.id, verifiedAt: new Date() } : {}),
+        },
+      }));
     createdPlayers.push(player);
   }
 
