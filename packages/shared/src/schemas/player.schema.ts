@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
   BATTING_STYLES,
   BOWLING_STYLES,
-  CRICKET_ROLES,
+  PLAYER_TYPES,
   EXPERIENCE_LEVELS,
   GENDERS,
   JERSEY_SIZES,
@@ -23,7 +23,7 @@ export type MedicalInfoInput = z.infer<typeof medicalInfoSchema>;
  * Server-side is the source of truth; the web client mirrors this schema for
  * instant per-field feedback but must never be trusted on its own.
  *
- * Player type (`cricketRole` — Super Striker/All-Rounder/Batsman/Bowler) is
+ * Player type (`playerType` — Super Striker/All-Rounder/Batsman/Bowler) is
  * the one field a player never sets themselves: it's deliberately optional
  * here and the only field omitted from `playerSelfInputSchema` below,
  * because an admin assigns it while reviewing the player (see
@@ -38,7 +38,7 @@ export const playerProfileSchema = z.object({
   gender: z.enum(GENDERS),
   email: z.string().email().optional().nullable(),
 
-  cricketRole: z.enum(CRICKET_ROLES).optional(),
+  playerType: z.enum(PLAYER_TYPES).optional(),
   battingStyle: z.enum(BATTING_STYLES),
   bowlingStyle: z.enum(BOWLING_STYLES).default("NONE"),
   preferredBattingPosition: z.coerce.number().int().min(1).max(11).optional(),
@@ -65,15 +65,15 @@ export const playerProfileSchema = z.object({
 });
 export type PlayerProfileInput = z.infer<typeof playerProfileSchema>;
 
-/** What a player may submit themselves — at registration or via self-edit. Player type (`cricketRole`) is omitted (not just optional): sending it here is silently dropped, never persisted. */
+/** What a player may submit themselves — at registration or via self-edit. Player type (`playerType`) is omitted (not just optional): sending it here is silently dropped, never persisted. */
 export const playerSelfInputSchema = playerProfileSchema.omit({
-  cricketRole: true,
+  playerType: true,
 });
 export type PlayerSelfInput = z.infer<typeof playerSelfInputSchema>;
 
 /** Admin-only: assigns/reassigns a player's type while reviewing them. Nothing else about their profile is admin-editable. */
 export const assignCricketProfileSchema = z.object({
-  cricketRole: z.enum(CRICKET_ROLES),
+  playerType: z.enum(PLAYER_TYPES),
 });
 export type AssignCricketProfileInput = z.infer<typeof assignCricketProfileSchema>;
 

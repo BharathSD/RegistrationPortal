@@ -576,7 +576,7 @@ components:
         dateOfBirth: { type: string, format: date }
         gender: { type: string, enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY] }
         email: { type: string, format: email, nullable: true }
-        cricketRole:
+        playerType:
           type: string
           nullable: true
           enum: [SUPER_STRIKER, ALL_ROUNDER, BATSMAN, BOWLER]
@@ -612,9 +612,9 @@ components:
 
     AssignCricketProfileInput:
       type: object
-      required: [cricketRole, battingStyle, preferredBattingPosition, experienceLevel]
+      required: [playerType, battingStyle, preferredBattingPosition, experienceLevel]
       properties:
-        cricketRole: { type: string, enum: [SUPER_STRIKER, ALL_ROUNDER, BATSMAN, BOWLER] }
+        playerType: { type: string, enum: [SUPER_STRIKER, ALL_ROUNDER, BATSMAN, BOWLER] }
         battingStyle: { type: string, enum: [RIGHT_HAND, LEFT_HAND] }
         bowlingStyle:
           type: string

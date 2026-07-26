@@ -194,8 +194,8 @@ function PlayerDetailModal({ playerId, isDuplicate, onClose }: { playerId: strin
               <Button
                 onClick={handleApprove}
                 loading={approve.isPending}
-                disabled={!player.cricketRole}
-                title={!player.cricketRole ? "Assign a player type below before approving" : undefined}
+                disabled={!player.playerType}
+                title={!player.playerType ? "Assign a player type below before approving" : undefined}
               >
                 Approve
               </Button>
@@ -207,7 +207,7 @@ function PlayerDetailModal({ playerId, isDuplicate, onClose }: { playerId: strin
               </Button>
             </div>
           )}
-          {mode === "view" && !player.cricketRole && (
+          {mode === "view" && !player.playerType && (
             <p className="text-xs text-warning">Assign a player type below before this player can be approved.</p>
           )}
 

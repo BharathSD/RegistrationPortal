@@ -8,7 +8,7 @@ const PROFILE: PlayerProfileInput = {
   fullName: "Ananya Rao",
   dateOfBirth: new Date("2001-09-03"),
   gender: "FEMALE",
-  cricketRole: "ALL_ROUNDER",
+  playerType: "ALL_ROUNDER",
   battingStyle: "LEFT_HAND",
   bowlingStyle: "LEFT_ARM_SPIN",
   preferredBattingPosition: 5,

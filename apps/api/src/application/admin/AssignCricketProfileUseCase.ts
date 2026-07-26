@@ -34,8 +34,8 @@ export function makeAssignCricketProfileUseCase({
       action: "PLAYER_TYPE_ASSIGNED",
       entityType: "Player",
       entityId: playerId,
-      before: { cricketRole: player.cricketRole },
-      after: { cricketRole: input.cricketRole },
+      before: { playerType: player.playerType },
+      after: { playerType: input.playerType },
     });
 
     return updated;

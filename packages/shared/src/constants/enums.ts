@@ -5,8 +5,8 @@
  * components iterate over for <RadioCardGroup> options.
  */
 
-export const CRICKET_ROLES = ["SUPER_STRIKER", "ALL_ROUNDER", "BATSMAN", "BOWLER"] as const;
-export type CricketRole = (typeof CRICKET_ROLES)[number];
+export const PLAYER_TYPES = ["SUPER_STRIKER", "ALL_ROUNDER", "BATSMAN", "BOWLER"] as const;
+export type PlayerType = (typeof PLAYER_TYPES)[number];
 
 export const BATTING_STYLES = ["RIGHT_HAND", "LEFT_HAND"] as const;
 export type BattingStyle = (typeof BATTING_STYLES)[number];

@@ -17,7 +17,7 @@ export function makeApprovePlayerUseCase({ playerRepo, auditLogRepo, whatsAppPro
     if (player.verificationStatus !== "PENDING_VERIFICATION" && player.verificationStatus !== "CHANGES_REQUESTED") {
       throw new ConflictError(`Cannot approve a player in status ${player.verificationStatus}`);
     }
-    if (!player.cricketRole) {
+    if (!player.playerType) {
       throw new ConflictError("Assign a player type (Super Striker, All-Rounder, Batsman, or Bowler) before approving");
     }
 

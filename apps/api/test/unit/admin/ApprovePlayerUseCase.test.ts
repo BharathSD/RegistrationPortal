@@ -10,7 +10,7 @@ const PROFILE: PlayerProfileInput = {
   fullName: "Vikram Singh",
   dateOfBirth: new Date("1995-01-20"),
   gender: "MALE",
-  cricketRole: "BOWLER",
+  playerType: "BOWLER",
   battingStyle: "RIGHT_HAND",
   bowlingStyle: "RIGHT_ARM_FAST",
   preferredBattingPosition: 9,
@@ -75,7 +75,7 @@ describe("ApprovePlayerUseCase", () => {
 
   it("refuses to approve a player with no cricket category assigned yet", async () => {
     const { playerRepo, approvePlayer } = setup();
-    const { cricketRole, ...profileWithoutRole } = PROFILE;
+    const { playerType, ...profileWithoutRole } = PROFILE;
     const player = await playerRepo.create({ mobile: "+919876543230", ...profileWithoutRole });
 
     await expect(approvePlayer(player.id, "admin-1")).rejects.toBeInstanceOf(ConflictError);

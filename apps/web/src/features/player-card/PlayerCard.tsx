@@ -40,8 +40,8 @@ export function PlayerCard({ player }: { player: Player }) {
             <div>
               <p className="font-display text-lg font-bold leading-tight">{player.fullName}</p>
               <p className="text-sm text-white/70">
-                {player.cricketRole
-                  ? `${player.cricketRole.replace("_", " ")} · Position ${player.preferredBattingPosition}`
+                {player.playerType
+                  ? `${player.playerType.replace("_", " ")} · Position ${player.preferredBattingPosition}`
                   : "Cricket profile not yet assigned"}
               </p>
             </div>

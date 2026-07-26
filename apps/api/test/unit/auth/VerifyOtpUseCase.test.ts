@@ -64,7 +64,7 @@ describe("VerifyOtpUseCase", () => {
       fullName: "Rohan Sharma",
       dateOfBirth: new Date("1998-04-12"),
       gender: "MALE",
-      cricketRole: "BATSMAN",
+      playerType: "BATSMAN",
       battingStyle: "RIGHT_HAND",
       bowlingStyle: "NONE",
       preferredBattingPosition: 3,

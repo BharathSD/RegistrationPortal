@@ -76,7 +76,7 @@ export function PlayerSearchPage() {
                 mobile: p.mobile,
                 city: p.city,
                 state: p.state,
-                role: p.cricketRole,
+                role: p.playerType,
                 status: p.verificationStatus,
               })),
             )
@@ -124,7 +124,7 @@ export function PlayerSearchPage() {
                   <td className="p-3">
                     {p.city}, {p.state}
                   </td>
-                  <td className="p-3">{p.cricketRole ? p.cricketRole.replace("_", " ") : "—"}</td>
+                  <td className="p-3">{p.playerType ? p.playerType.replace("_", " ") : "—"}</td>
                   <td className="p-3">
                     <StatusBadge status={p.verificationStatus} />
                   </td>

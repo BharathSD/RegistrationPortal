@@ -9,7 +9,7 @@ const PROFILE: PlayerProfileInput = {
   fullName: "Vikram Singh",
   dateOfBirth: new Date("1995-01-20"),
   gender: "MALE",
-  cricketRole: "BOWLER",
+  playerType: "BOWLER",
   battingStyle: "RIGHT_HAND",
   bowlingStyle: "RIGHT_ARM_FAST",
   preferredBattingPosition: 9,

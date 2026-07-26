@@ -45,7 +45,7 @@ export class PrismaPlayerRepository implements PlayerRepository {
         email: data.email ?? null,
         // Not collected at registration — left null ("unassigned") until an
         // admin assigns the player's cricket profile (see AssignCricketProfileUseCase).
-        cricketRole: data.cricketRole ?? null,
+        playerType: data.playerType ?? null,
         battingStyle: data.battingStyle ?? null,
         bowlingStyle: data.bowlingStyle ?? null,
         preferredBattingPosition: data.preferredBattingPosition ?? null,

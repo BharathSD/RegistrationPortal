@@ -4,7 +4,7 @@ import { Select } from "../../../design-system/components/Field";
 import { useToast } from "../../../design-system/components/Toast";
 import { useAssignCricketProfile } from "../../../lib/api/admin";
 import { ApiError } from "../../../lib/api/client";
-import { CRICKET_ROLES, type AssignCricketProfileInput, type Player } from "@cricket-platform/shared";
+import { PLAYER_TYPES, type AssignCricketProfileInput, type Player } from "@cricket-platform/shared";
 
 /**
  * A player never sets their own player type — an admin assigns it here
@@ -17,14 +17,14 @@ import { CRICKET_ROLES, type AssignCricketProfileInput, type Player } from "@cri
 export function PlayerTypeEditor({ player }: { player: Player }) {
   const assignCricketProfile = useAssignCricketProfile();
   const toast = useToast();
-  const [cricketRole, setCricketRole] = useState<AssignCricketProfileInput["cricketRole"] | "">(
-    player.cricketRole ?? "",
+  const [playerType, setCricketRole] = useState<AssignCricketProfileInput["playerType"] | "">(
+    player.playerType ?? "",
   );
 
   async function handleSave() {
-    if (!cricketRole) return;
+    if (!playerType) return;
     try {
-      await assignCricketProfile.mutateAsync({ playerId: player.id, input: { cricketRole } });
+      await assignCricketProfile.mutateAsync({ playerId: player.id, input: { playerType } });
       toast.success("Player type updated.");
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
@@ -41,14 +41,14 @@ export function PlayerTypeEditor({ player }: { player: Player }) {
           <Select
             label="Player Type"
             placeholder="Select player type"
-            value={cricketRole}
-            onChange={(e) => setCricketRole(e.target.value as AssignCricketProfileInput["cricketRole"])}
-            options={CRICKET_ROLES.map((r) => ({ value: r, label: r.replace("_", " ") }))}
+            value={playerType}
+            onChange={(e) => setCricketRole(e.target.value as AssignCricketProfileInput["playerType"])}
+            options={PLAYER_TYPES.map((r) => ({ value: r, label: r.replace("_", " ") }))}
           />
         </div>
         <Button
           size="sm"
-          disabled={!cricketRole || cricketRole === player.cricketRole}
+          disabled={!playerType || playerType === player.playerType}
           loading={assignCricketProfile.isPending}
           onClick={handleSave}
         >

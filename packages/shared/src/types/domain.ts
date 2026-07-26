@@ -1,5 +1,5 @@
 import type {
-  CricketRole,
+  PlayerType,
   BattingStyle,
   BowlingStyle,
   ExperienceLevel,
@@ -37,7 +37,7 @@ export interface Player {
 
   // Assigned by an admin after reviewing the player, not set by the player
   // at registration — null until assigned (see assignCricketProfileSchema).
-  cricketRole: CricketRole | null;
+  playerType: PlayerType | null;
   battingStyle: BattingStyle | null;
   bowlingStyle: BowlingStyle | null;
   preferredBattingPosition: number | null;

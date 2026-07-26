@@ -45,7 +45,7 @@ export class InMemoryPlayerRepository implements PlayerRepository {
       emergencyContactName: data.emergencyContactName ?? null,
       emergencyContactRelation: data.emergencyContactRelation ?? null,
       emergencyContactPhone: data.emergencyContactPhone ?? null,
-      cricketRole: data.cricketRole ?? null,
+      playerType: data.playerType ?? null,
       battingStyle: data.battingStyle ?? null,
       bowlingStyle: data.bowlingStyle ?? null,
       preferredBattingPosition: data.preferredBattingPosition ?? null,

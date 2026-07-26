@@ -13,7 +13,7 @@ export function toDomainPlayer(
     gender: p.gender,
     email: p.email,
     photoUrl: p.photoUrl,
-    cricketRole: p.cricketRole,
+    playerType: p.playerType,
     battingStyle: p.battingStyle,
     bowlingStyle: p.bowlingStyle,
     preferredBattingPosition: p.preferredBattingPosition,

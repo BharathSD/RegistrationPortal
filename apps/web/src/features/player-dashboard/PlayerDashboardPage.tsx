@@ -162,7 +162,7 @@ export function PlayerDashboardPage() {
         </div>
         <Card className="grid grid-cols-2 gap-y-2 text-sm">
           <span className="text-text-secondary">Player Type</span>
-          <span>{player.cricketRole ? player.cricketRole.replace("_", " ") : "Not yet assigned by admin"}</span>
+          <span>{player.playerType ? player.playerType.replace("_", " ") : "Not yet assigned by admin"}</span>
           <span className="text-text-secondary">Batting / bowling</span>
           <span>
             {player.battingStyle?.replace("_", "-") ?? "—"} · {player.bowlingStyle?.replace(/_/g, " ") ?? "—"}
