@@ -48,16 +48,25 @@ async function rawRequest(path: string, options: RequestOptions = {}): Promise<R
     const { accessToken } = getTokens();
     if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   }
-  return fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers,
-    // Required for the refresh-token cookie (httpOnly, set by the API) to
-    // be sent/received at all — without this, a cross-origin fetch (the
-    // web app and API are on different ports in dev, and typically
-    // different subdomains in prod) silently drops Set-Cookie/Cookie.
-    credentials: "include",
-    body: body ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
-  });
+  try {
+    return await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers,
+      // Required for the refresh-token cookie (httpOnly, set by the API) to
+      // be sent/received at all — without this, a cross-origin fetch (the
+      // web app and API are on different ports in dev, and typically
+      // different subdomains in prod) silently drops Set-Cookie/Cookie.
+      credentials: "include",
+      body: body ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
+    });
+  } catch {
+    // fetch() itself throws (not a rejected-with-status Response) when the
+    // server can't be reached at all — dev API not running, no network,
+    // DNS failure. Every call site only knows how to handle ApiError (`if
+    // (err instanceof ApiError) toast.error(...)`), so without this a dead
+    // server means every button in the app silently does nothing on click.
+    throw new ApiError(0, "NETWORK_ERROR", "Can't reach the server. Check your connection and try again.");
+  }
 }
 
 /** In-flight refresh promise, shared across callers — without this, two requests 401-ing at the same moment would each rotate the refresh token, and the loser's rotation would invalidate the winner's brand-new token. */
