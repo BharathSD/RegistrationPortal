@@ -25,7 +25,12 @@ const envSchema = z.object({
   // secret as a hashing pepper means one leak compromises both token
   // forgery and OTP hash computation. Falls back to JWT_ACCESS_SECRET only
   // so existing local `.env` files don't break; set this explicitly in prod.
-  OTP_HASH_PEPPER: z.string().min(32).optional(),
+  // .env files across this repo write unset optional secrets as `KEY=`
+  // (empty string), not by omitting the line — preprocess so that convention
+  // doesn't trip the min-length check below (every other optional field is
+  // a bare .optional() with no length floor, so this is the one field where
+  // an empty string was actually failing validation instead of no-op'ing).
+  OTP_HASH_PEPPER: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(32).optional()),
 
   // Origin(s) the production frontend is served from, comma-separated.
   // Required in production — see app.ts, where cors() reads this instead of

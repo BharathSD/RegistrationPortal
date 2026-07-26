@@ -88,6 +88,6 @@ npm run prisma:seed --workspace apps/api
 # ---- 4. start dev servers --------------------------------------------------
 info "Starting API on http://localhost:4000 (docs at /docs) and web on http://localhost:5173"
 trap 'kill 0' EXIT INT TERM
-npm run dev:api --workspace apps/api &
-npm run dev:web --workspace apps/web &
+npm run dev --workspace apps/api &
+npm run dev --workspace apps/web &
 wait

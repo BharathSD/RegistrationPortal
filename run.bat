@@ -81,8 +81,8 @@ call npm run prisma:seed --workspace apps/api
 if errorlevel 1 exit /b 1
 
 echo [run.bat] Starting API on http://localhost:4000 (docs at /docs) and web on http://localhost:5173
-start "Cricket Platform API" cmd /k "npm run dev:api --workspace apps/api"
-start "Cricket Platform Web" cmd /k "npm run dev:web --workspace apps/web"
+start "Cricket Platform API" cmd /k "npm run dev --workspace apps/api"
+start "Cricket Platform Web" cmd /k "npm run dev --workspace apps/web"
 
 echo [run.bat] Both dev servers are starting in separate windows. Close those windows to stop them.
 endlocal
