@@ -3,7 +3,7 @@
  * needs. Each has a "console" dev implementation (infrastructure/providers)
  * so the entire product can be built/tested end-to-end without live
  * Twilio/Meta/Razorpay credentials, and a real implementation swapped in via
- * env var at the composition root (app.ts).
+ * env var at the composition root (container.ts).
  */
 
 export interface SmsProvider {
