@@ -2,6 +2,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
+import { buildPlayerId } from "@cricket-platform/shared";
 
 const prisma = new PrismaClient();
 
@@ -54,7 +55,6 @@ async function main() {
       jerseySize: "L" as const,
       jerseyNumberPref1: "7",
       jerseyName: "R. SHARMA",
-      playerId: "AVI-000001",
     },
     {
       mobile: "+919876543220",
@@ -77,7 +77,6 @@ async function main() {
       jerseySize: "M" as const,
       jerseyNumberPref1: "23",
       jerseyName: "A. RAO",
-      playerId: "AVI-000002",
     },
     {
       mobile: "+919876543230",
@@ -100,29 +99,35 @@ async function main() {
       jerseySize: "XL" as const,
       jerseyNumberPref1: "99",
       jerseyName: "V. SINGH",
-      playerId: null, // still pending verification, to populate the admin queue
-      verificationStatus: "PENDING_VERIFICATION" as const,
+      verificationStatus: "PENDING_VERIFICATION" as const, // stays unassigned, to populate the admin queue
     },
   ];
 
+  // Mirrors PrismaPlayerRepository.assignNextPlayerId: count every player
+  // ever issued an ID (including soft-deleted ones — a Player ID is never
+  // freed for reuse) so a re-run of this script against a DB that already
+  // has history never collides with an old ID, instead of hardcoding
+  // literal "AVI-000001"-style strings that only work on a pristine DB.
+  async function assignNextPlayerId(playerId: string) {
+    const count = await prisma.player.count({ where: { playerId: { not: null } } });
+    return prisma.player.update({
+      where: { id: playerId },
+      data: { playerId: buildPlayerId(count + 1), verificationStatus: "VERIFIED", verifiedByAdminId: admin.id, verifiedAt: new Date() },
+    });
+  }
+
   const createdPlayers = [];
   for (const p of players) {
-    const { playerId, verificationStatus, ...rest } = p;
+    const { verificationStatus, ...rest } = p;
     // mobile isn't DB-unique on its own (see the partial-index comment on
     // the schema field) so this can't be a prisma.player.upsert() keyed on
     // it — findFirst + conditional create, same workaround as
     // PrismaPlayerRepository.findByMobile.
     const existing = await prisma.player.findFirst({ where: { mobile: p.mobile, deletedAt: null } });
-    const player =
-      existing ??
-      (await prisma.player.create({
-        data: {
-          ...rest,
-          playerId: playerId ?? undefined,
-          verificationStatus: verificationStatus ?? "VERIFIED",
-          ...(playerId ? { verifiedByAdminId: admin.id, verifiedAt: new Date() } : {}),
-        },
-      }));
+    let player = existing ?? (await prisma.player.create({ data: { ...rest, verificationStatus: verificationStatus ?? "VERIFIED" } }));
+    if (!existing && player.verificationStatus === "VERIFIED") {
+      player = await assignNextPlayerId(player.id);
+    }
     createdPlayers.push(player);
   }
 

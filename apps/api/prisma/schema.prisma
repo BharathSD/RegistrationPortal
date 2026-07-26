@@ -301,6 +301,13 @@ model Registration {
   status          RegistrationStatus @default(PENDING_PAYMENT)
   rulesAccepted   Boolean            @default(false) @map("rules_accepted")
   rulesAcceptedAt DateTime?          @map("rules_accepted_at")
+  // Per-tournament, not part of the player's general cricket profile — a
+  // player who normally bowls (bowlingStyle != NONE) may still opt out for
+  // this specific tournament (injury, personal choice, etc).
+  willingToBowl   Boolean            @default(true) @map("willing_to_bowl")
+  // Free-form, e.g. "unavailable on the 12th and 13th" — surfaced to admins
+  // reviewing the roster, not shown back to the player anywhere.
+  notes           String?
   qrToken         String             @unique @map("qr_token")
   createdAt       DateTime           @default(now()) @map("created_at")
   updatedAt       DateTime           @updatedAt @map("updated_at")

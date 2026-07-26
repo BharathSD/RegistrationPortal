@@ -30,19 +30,29 @@ export type TournamentInput = z.infer<typeof tournamentInputSchema>;
 export const tournamentUpdateSchema = tournamentInputObjectSchema.partial();
 export type TournamentUpdateInput = z.infer<typeof tournamentUpdateSchema>;
 
-export const registerForTournamentSchema = z.object({
-  tournamentId: z.string().uuid(),
-  rulesAccepted: z.literal(true, {
-    errorMap: () => ({ message: "You must accept the tournament rules to register" }),
-  }),
+/** Per-registration, not part of the player's general cricket profile — whether they're bowling *this* tournament, plus any free-form note for the organizers (e.g. "unavailable on the 12th and 13th"). Shared by both self-service and admin-assisted registration. */
+export const registrationDetailsSchema = z.object({
+  willingToBowl: z.boolean().default(true),
+  notes: z.string().trim().max(500).optional(),
 });
+
+export const registerForTournamentSchema = z
+  .object({
+    tournamentId: z.string().uuid(),
+    rulesAccepted: z.literal(true, {
+      errorMap: () => ({ message: "You must accept the tournament rules to register" }),
+    }),
+  })
+  .merge(registrationDetailsSchema);
 export type RegisterForTournamentInput = z.infer<typeof registerForTournamentSchema>;
 
 /** Admin-only: registers an already-VERIFIED player into a tournament directly, for players who can't complete self-service registration on their own (assisted in person, over the phone, etc). Rules acceptance is still required — the admin confirms it on the player's behalf. */
-export const adminAddToRosterSchema = z.object({
-  playerId: z.string().uuid(),
-  rulesAccepted: z.literal(true, {
-    errorMap: () => ({ message: "Confirm the player has accepted the tournament rules" }),
-  }),
-});
+export const adminAddToRosterSchema = z
+  .object({
+    playerId: z.string().uuid(),
+    rulesAccepted: z.literal(true, {
+      errorMap: () => ({ message: "Confirm the player has accepted the tournament rules" }),
+    }),
+  })
+  .merge(registrationDetailsSchema);
 export type AdminAddToRosterInput = z.infer<typeof adminAddToRosterSchema>;

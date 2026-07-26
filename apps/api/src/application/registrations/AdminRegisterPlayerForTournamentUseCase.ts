@@ -1,11 +1,12 @@
 import type { AuditLogRepository } from "../../domain/repositories/AuditLogRepository";
-import type { RegisterForTournamentResult } from "./RegisterForTournamentUseCase";
+import type { RegisterForTournamentResult, RegistrationDetails } from "./RegisterForTournamentUseCase";
 
 export interface AdminRegisterPlayerForTournamentDeps {
   registerForTournament: (
     playerId: string,
     tournamentId: string,
     rulesAccepted: boolean,
+    details?: RegistrationDetails,
   ) => Promise<RegisterForTournamentResult>;
   auditLogRepo: AuditLogRepository;
 }
@@ -25,8 +26,9 @@ export function makeAdminRegisterPlayerForTournamentUseCase({
     tournamentId: string,
     playerId: string,
     adminId: string,
+    details: RegistrationDetails = {},
   ): Promise<RegisterForTournamentResult> {
-    const result = await registerForTournament(playerId, tournamentId, true);
+    const result = await registerForTournament(playerId, tournamentId, true, details);
 
     if (!result.alreadyExisted) {
       await auditLogRepo.record({
@@ -34,7 +36,13 @@ export function makeAdminRegisterPlayerForTournamentUseCase({
         action: "PLAYER_REGISTERED_BY_ADMIN",
         entityType: "Registration",
         entityId: result.registration.id,
-        after: { playerId, tournamentId, status: result.registration.status },
+        after: {
+          playerId,
+          tournamentId,
+          status: result.registration.status,
+          willingToBowl: result.registration.willingToBowl,
+          notes: result.registration.notes,
+        },
       });
     }
 

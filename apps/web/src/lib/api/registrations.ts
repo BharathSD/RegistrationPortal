@@ -17,7 +17,7 @@ export function useMyRegistrations(enabled: boolean) {
 export function useRegisterForTournament() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { tournamentId: string; rulesAccepted: true }) =>
+    mutationFn: (input: { tournamentId: string; rulesAccepted: true; willingToBowl?: boolean; notes?: string }) =>
       apiRequest<Registration>("/registrations", { method: "POST", body: input }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["players", "me", "registrations"] }),
   });

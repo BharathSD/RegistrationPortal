@@ -1,4 +1,11 @@
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import {
+  forwardRef,
+  useId,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from "react";
 import clsx from "clsx";
 
 export interface FieldWrapperProps {
@@ -65,6 +72,30 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ),
 );
 Input.displayName = "Input";
+
+interface TextareaProps
+  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "id">,
+    Omit<FieldWrapperProps, "children"> {}
+
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ label, hint, error, required, className, rows = 3, ...props }, ref) => (
+    <FieldWrapper label={label} hint={hint} error={error} required={required}>
+      {({ inputId, describedBy }) => (
+        <textarea
+          ref={ref}
+          id={inputId}
+          rows={rows}
+          aria-describedby={describedBy}
+          aria-invalid={Boolean(error)}
+          required={required}
+          className={clsx(inputBaseClasses, "h-auto resize-y py-2", error && "border-danger", className)}
+          {...props}
+        />
+      )}
+    </FieldWrapper>
+  ),
+);
+Textarea.displayName = "Textarea";
 
 interface SelectProps
   extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "id">,

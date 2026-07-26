@@ -7,6 +7,7 @@ export interface RegistrationsUseCases {
     playerId: string,
     tournamentId: string,
     rulesAccepted: boolean,
+    details?: { willingToBowl?: boolean; notes?: string },
   ) => Promise<{ registration: unknown; alreadyExisted: boolean }>;
   createPaymentOrder: (playerId: string, registrationId: string) => Promise<unknown>;
   cancelRegistration: (playerId: string, registrationId: string) => Promise<unknown>;
@@ -27,6 +28,7 @@ export function makeRegistrationsController(useCases: RegistrationsUseCases) {
         playerId,
         req.body.tournamentId,
         req.body.rulesAccepted,
+        { willingToBowl: req.body.willingToBowl, notes: req.body.notes },
       );
       res.status(alreadyExisted ? 200 : 201).json(registration);
     },

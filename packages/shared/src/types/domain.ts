@@ -96,6 +96,8 @@ export interface Registration {
   status: RegistrationStatus;
   rulesAccepted: boolean;
   rulesAcceptedAt?: string | null;
+  willingToBowl: boolean;
+  notes?: string | null;
   qrToken: string;
   createdAt: string;
   updatedAt: string;

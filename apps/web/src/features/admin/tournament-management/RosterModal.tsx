@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { UserPlus, X } from "lucide-react";
-import { Button, ConfirmDialog, Modal } from "../../../design-system";
-import { Input } from "../../../design-system/components/Field";
+import { Button, Checkbox, ConfirmDialog, Modal } from "../../../design-system";
+import { Input, Textarea } from "../../../design-system/components/Field";
 import { StatusBadge } from "../../../design-system/components/Badge";
 import { useToast } from "../../../design-system/components/Toast";
 import { useAdminAddToRoster, useRemoveFromRoster, useTournamentRoster } from "../../../lib/api/tournaments";
@@ -37,11 +37,19 @@ export function RosterModal({ tournamentId, onClose }: { tournamentId: string; o
       {isLoading && <p className="text-sm text-text-secondary">Loading...</p>}
       <div className="flex flex-col gap-2">
         {roster?.map((r) => (
-          <div key={r.id} className="flex items-center justify-between border-b border-border py-2 text-sm last:border-0">
-            <span>
-              {r.player.fullName} <span className="text-text-secondary">({r.player.playerId})</span>
-            </span>
-            <div className="flex items-center gap-2">
+          <div key={r.id} className="flex items-start justify-between gap-2 border-b border-border py-2 text-sm last:border-0">
+            <div className="min-w-0">
+              <span>
+                {r.player.fullName} <span className="text-text-secondary">({r.player.playerId})</span>
+              </span>
+              <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                {!r.willingToBowl && (
+                  <span className="rounded-full bg-warning/10 px-1.5 py-0.5 text-xs text-warning">Not bowling</span>
+                )}
+                {r.notes && <span className="text-xs text-text-secondary" title={r.notes}>💬 {r.notes}</span>}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
               <StatusBadge status={r.status} />
               <Button
                 size="sm"
@@ -77,13 +85,17 @@ export function RosterModal({ tournamentId, onClose }: { tournamentId: string; o
  * who can't complete self-service tournament registration on their own.
  * Searches VERIFIED players only — that's the same eligibility check the
  * self-service flow enforces server-side, surfaced here so an admin isn't
- * shown someone they can't actually add.
+ * shown someone they can't actually add. Picking a search result opens a
+ * small confirm step so the admin can capture the same bowling-availability
+ * and notes fields a self-registering player would fill in themselves.
  */
 function AddVerifiedPlayerToRoster({ tournamentId, rosterPlayerIds }: { tournamentId: string; rosterPlayerIds: string[] }) {
   const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<{ id: string; name: string } | null>(null);
+  const [willingToBowl, setWillingToBowl] = useState(true);
+  const [notes, setNotes] = useState("");
   const toast = useToast();
   const addToRoster = useAdminAddToRoster(tournamentId);
-  const [addingId, setAddingId] = useState<string | null>(null);
   const { data: matches, isFetching } = useAdminPlayers({
     status: "VERIFIED",
     q: q.trim().length >= 2 ? q.trim() : undefined,
@@ -92,17 +104,49 @@ function AddVerifiedPlayerToRoster({ tournamentId, rosterPlayerIds }: { tourname
 
   const results = (matches?.items ?? []).filter((p) => !rosterPlayerIds.includes(p.id));
 
-  async function handleAdd(playerId: string, name: string) {
-    setAddingId(playerId);
+  function pickPlayer(id: string, name: string) {
+    setSelected({ id, name });
+    setWillingToBowl(true);
+    setNotes("");
+  }
+
+  function cancelSelection() {
+    setSelected(null);
+  }
+
+  async function handleConfirmAdd() {
+    if (!selected) return;
     try {
-      await addToRoster.mutateAsync(playerId);
-      toast.success(`${name} added to the roster.`);
+      await addToRoster.mutateAsync({ playerId: selected.id, willingToBowl, notes: notes.trim() || undefined });
+      toast.success(`${selected.name} added to the roster.`);
       setQ("");
+      setSelected(null);
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
-    } finally {
-      setAddingId(null);
     }
+  }
+
+  if (selected) {
+    return (
+      <div className="mb-4 flex flex-col gap-3 border-b border-border pb-4">
+        <p className="text-sm font-semibold">Add {selected.name} to the roster</p>
+        <Checkbox checked={willingToBowl} onChange={setWillingToBowl} label="Willing to bowl in this tournament" />
+        <Textarea
+          label="Notes for the organizers (optional)"
+          hint="E.g. unavailable on specific days, injury concerns, etc."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="secondary" onClick={cancelSelection} disabled={addToRoster.isPending}>
+            Cancel
+          </Button>
+          <Button size="sm" loading={addToRoster.isPending} onClick={handleConfirmAdd}>
+            <UserPlus className="h-4 w-4" /> Add to roster
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -123,7 +167,7 @@ function AddVerifiedPlayerToRoster({ tournamentId, rosterPlayerIds }: { tourname
                 <span>
                   {p.fullName} <span className="text-text-secondary">({p.playerId} · {p.mobile})</span>
                 </span>
-                <Button size="sm" variant="secondary" loading={addingId === p.id} onClick={() => handleAdd(p.id, p.fullName)}>
+                <Button size="sm" variant="secondary" onClick={() => pickPlayer(p.id, p.fullName)}>
                   <UserPlus className="h-4 w-4" /> Add
                 </Button>
               </div>

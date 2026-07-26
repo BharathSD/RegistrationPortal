@@ -63,10 +63,10 @@ export function useRemoveFromRoster(tournamentId: string | undefined) {
 export function useAdminAddToRoster(tournamentId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (playerId: string) =>
+    mutationFn: (input: { playerId: string; willingToBowl?: boolean; notes?: string }) =>
       apiRequest<RosterEntry>(`/tournaments/${tournamentId}/roster`, {
         method: "POST",
-        body: { playerId, rulesAccepted: true },
+        body: { ...input, rulesAccepted: true },
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tournaments", tournamentId, "roster"] }),
   });
@@ -75,6 +75,8 @@ export function useAdminAddToRoster(tournamentId: string | undefined) {
 interface RosterEntry {
   id: string;
   status: string;
+  willingToBowl: boolean;
+  notes: string | null;
   player: { id: string; fullName: string; playerId: string | null; mobile: string };
 }
 

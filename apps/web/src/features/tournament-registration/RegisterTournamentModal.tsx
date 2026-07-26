@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CalendarDays, MapPin } from "lucide-react";
 import type { Tournament } from "@cricket-platform/shared";
 import { Button, Checkbox, Modal } from "../../design-system";
+import { Textarea } from "../../design-system/components/Field";
 import { useRegisterForTournament } from "../../lib/api/registrations";
 import { useToast } from "../../design-system/components/Toast";
 import { ApiError } from "../../lib/api/client";
@@ -14,12 +15,19 @@ import { ApiError } from "../../lib/api/client";
  */
 export function RegisterTournamentModal({ tournament, onClose }: { tournament: Tournament; onClose: () => void }) {
   const [rulesAccepted, setRulesAccepted] = useState(false);
+  const [willingToBowl, setWillingToBowl] = useState(true);
+  const [notes, setNotes] = useState("");
   const registerForTournament = useRegisterForTournament();
   const toast = useToast();
 
   async function handleRegister() {
     try {
-      await registerForTournament.mutateAsync({ tournamentId: tournament.id, rulesAccepted: true });
+      await registerForTournament.mutateAsync({
+        tournamentId: tournament.id,
+        rulesAccepted: true,
+        willingToBowl,
+        notes: notes.trim() || undefined,
+      });
       toast.success(
         tournament.feeRequired
           ? "Registered — your spot is reserved pending payment."
@@ -48,6 +56,15 @@ export function RegisterTournamentModal({ tournament, onClose }: { tournament: T
             {tournament.rulesMarkdown}
           </div>
         )}
+
+        <Checkbox checked={willingToBowl} onChange={setWillingToBowl} label="I'm willing to bowl in this tournament" />
+
+        <Textarea
+          label="Notes for the organizers (optional)"
+          hint="E.g. unavailable on specific days, injury concerns, etc."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
 
         <Checkbox
           checked={rulesAccepted}

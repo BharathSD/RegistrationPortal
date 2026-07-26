@@ -14,9 +14,16 @@ export interface RegistrationRepository {
     tournamentId: string;
     status: RegistrationStatus;
     rulesAccepted: boolean;
+    willingToBowl: boolean;
+    notes?: string;
     qrToken: string;
   }): Promise<Registration>;
   setStatus(id: string, status: RegistrationStatus): Promise<Registration>;
+  /** Un-cancels a registration in place — the (playerId, tournamentId) unique constraint means re-registering after a cancellation must reuse the same row, not insert a new one. Refreshes everything a fresh registration would set (rules acceptance, bowling/notes, a new QR token) since the old ones no longer reflect the player's current answers. */
+  reactivate(
+    id: string,
+    data: { status: RegistrationStatus; rulesAccepted: boolean; willingToBowl: boolean; notes?: string; qrToken: string },
+  ): Promise<Registration>;
   listByTournament(tournamentId: string): Promise<RegistrationWithRelations[]>;
   listByPlayer(playerId: string): Promise<RegistrationWithRelations[]>;
   /** Deletes the registration along with its payment/checkin records. */

@@ -108,6 +108,69 @@ describe("RegisterForTournamentUseCase", () => {
     expect(second.registration.id).toBe(first.registration.id);
   });
 
+  it("lets a player re-register after cancelling, reusing the same row rather than erroring on the unique constraint", async () => {
+    const { playerRepo, tournamentRepo, registrationRepo, registerForTournament, whatsAppProvider } = setup();
+    const player = await playerRepo.create({ mobile: "+919876543210", ...PLAYER_PROFILE });
+    await playerRepo.assignPlayerId(player.id, "AVI-000001", "admin-1");
+    const tournament = await tournamentRepo.create({ ...TOURNAMENT_INPUT, slug: "summer-t20", createdByAdminId: "admin-1" });
+    await tournamentRepo.setStatus(tournament.id, "PUBLISHED");
+
+    const first = await registerForTournament(player.id, tournament.id, true);
+    await registrationRepo.setStatus(first.registration.id, "CANCELLED");
+
+    const second = await registerForTournament(player.id, tournament.id, true);
+
+    expect(second.alreadyExisted).toBe(false);
+    expect(second.registration.id).toBe(first.registration.id);
+    expect(second.registration.status).toBe("CONFIRMED");
+    expect(registrationRepo.registrations).toHaveLength(1);
+    expect(whatsAppProvider.sent).toHaveLength(2); // once on first registration, again on re-registration
+  });
+
+  it("clears a stale note from the cancelled registration when re-registering without a new one", async () => {
+    const { playerRepo, tournamentRepo, registrationRepo, registerForTournament } = setup();
+    const player = await playerRepo.create({ mobile: "+919876543210", ...PLAYER_PROFILE });
+    await playerRepo.assignPlayerId(player.id, "AVI-000001", "admin-1");
+    const tournament = await tournamentRepo.create({ ...TOURNAMENT_INPUT, slug: "summer-t20", createdByAdminId: "admin-1" });
+    await tournamentRepo.setStatus(tournament.id, "PUBLISHED");
+
+    const first = await registerForTournament(player.id, tournament.id, true, { notes: "Unavailable on day 2" });
+    await registrationRepo.setStatus(first.registration.id, "CANCELLED");
+
+    const second = await registerForTournament(player.id, tournament.id, true);
+
+    expect(second.registration.notes).toBeNull();
+  });
+
+  it("defaults willingToBowl to true and notes to null when no details are given", async () => {
+    const { playerRepo, tournamentRepo, registerForTournament } = setup();
+    const player = await playerRepo.create({ mobile: "+919876543210", ...PLAYER_PROFILE });
+    await playerRepo.assignPlayerId(player.id, "AVI-000001", "admin-1");
+    const tournament = await tournamentRepo.create({ ...TOURNAMENT_INPUT, slug: "summer-t20", createdByAdminId: "admin-1" });
+    await tournamentRepo.setStatus(tournament.id, "PUBLISHED");
+
+    const { registration } = await registerForTournament(player.id, tournament.id, true);
+
+    expect(registration.willingToBowl).toBe(true);
+    expect(registration.notes).toBeNull();
+  });
+
+  it("persists an explicit willingToBowl:false opt-out and a notes comment", async () => {
+    const { playerRepo, tournamentRepo, registerForTournament } = setup();
+    const player = await playerRepo.create({ mobile: "+919876543210", ...PLAYER_PROFILE });
+    await playerRepo.assignPlayerId(player.id, "AVI-000001", "admin-1");
+    const tournament = await tournamentRepo.create({ ...TOURNAMENT_INPUT, slug: "summer-t20", createdByAdminId: "admin-1" });
+    await tournamentRepo.setStatus(tournament.id, "PUBLISHED");
+
+    const { registration } = await registerForTournament(player.id, tournament.id, true, {
+      willingToBowl: false,
+      notes: "Unavailable on the 12th and 13th",
+    });
+
+    expect(registration.willingToBowl).toBe(false);
+    expect(registration.notes).toBe("Unavailable on the 12th and 13th");
+  });
+
   it("rejects registration once the tournament has reached max participants", async () => {
     const { playerRepo, tournamentRepo, registerForTournament } = setup();
     const player = await playerRepo.create({ mobile: "+919876543210", ...PLAYER_PROFILE });

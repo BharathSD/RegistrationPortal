@@ -25,12 +25,15 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
     tournamentId: string;
     status: RegistrationStatus;
     rulesAccepted: boolean;
+    willingToBowl: boolean;
+    notes?: string;
     qrToken: string;
   }): Promise<Registration> {
     const now = new Date().toISOString();
     const registration: RegistrationWithRelations = {
       id: crypto.randomUUID(),
       ...data,
+      notes: data.notes ?? null,
       rulesAcceptedAt: data.rulesAccepted ? now : null,
       createdAt: now,
       updatedAt: now,
@@ -38,6 +41,19 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
       tournament: { id: data.tournamentId, name: "Test Tournament", feeRequired: false, entryFee: 0 },
     };
     this.registrations.push(registration);
+    return registration;
+  }
+
+  async reactivate(
+    id: string,
+    data: { status: RegistrationStatus; rulesAccepted: boolean; willingToBowl: boolean; notes?: string; qrToken: string },
+  ): Promise<Registration> {
+    const registration = this.registrations.find((r) => r.id === id);
+    if (!registration) throw new Error("not found");
+    Object.assign(registration, data, {
+      notes: data.notes ?? null,
+      rulesAcceptedAt: data.rulesAccepted ? new Date().toISOString() : null,
+    });
     return registration;
   }
 

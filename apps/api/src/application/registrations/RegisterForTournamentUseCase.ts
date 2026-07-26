@@ -17,6 +17,12 @@ export interface RegisterForTournamentResult {
   alreadyExisted: boolean;
 }
 
+export interface RegistrationDetails {
+  /** Per-tournament, not the player's general profile — defaults to true (most players who can bowl are willing to). */
+  willingToBowl?: boolean;
+  notes?: string;
+}
+
 export function makeRegisterForTournamentUseCase({
   playerRepo,
   tournamentRepo,
@@ -27,6 +33,7 @@ export function makeRegisterForTournamentUseCase({
     playerId: string,
     tournamentId: string,
     rulesAccepted: boolean,
+    details: RegistrationDetails = {},
   ): Promise<RegisterForTournamentResult> {
     const player = await playerRepo.findById(playerId);
     if (!player) throw new NotFoundError("Player", playerId);
@@ -45,7 +52,11 @@ export function makeRegisterForTournamentUseCase({
     }
 
     const existing = await registrationRepo.findByPlayerAndTournament(playerId, tournamentId);
-    if (existing) {
+    // A CANCELLED registration doesn't count as "already registered" — the
+    // player changed their mind and wants back in. Everything else
+    // (PENDING_PAYMENT, CONFIRMED, CHECKED_IN) is a real existing
+    // registration and stays idempotent.
+    if (existing && existing.status !== "CANCELLED") {
       const full = await registrationRepo.findById(existing.id);
       return { registration: full!, alreadyExisted: true };
     }
@@ -60,7 +71,29 @@ export function makeRegisterForTournamentUseCase({
     const qrToken = crypto.randomBytes(24).toString("base64url");
     const status = tournament.feeRequired ? "PENDING_PAYMENT" : "CONFIRMED";
 
-    await registrationRepo.create({ playerId, tournamentId, status, rulesAccepted, qrToken });
+    if (existing) {
+      // Re-registering after a cancellation: the (playerId, tournamentId)
+      // unique constraint means this has to reuse the same row rather than
+      // insert a new one — a fresh QR token too, since the old one may
+      // already have been shared/scanned before the player backed out.
+      await registrationRepo.reactivate(existing.id, {
+        status,
+        rulesAccepted,
+        willingToBowl: details.willingToBowl ?? true,
+        notes: details.notes,
+        qrToken,
+      });
+    } else {
+      await registrationRepo.create({
+        playerId,
+        tournamentId,
+        status,
+        rulesAccepted,
+        willingToBowl: details.willingToBowl ?? true,
+        notes: details.notes,
+        qrToken,
+      });
+    }
     const created = await registrationRepo.findByPlayerAndTournament(playerId, tournamentId);
     const full = await registrationRepo.findById(created!.id);
 

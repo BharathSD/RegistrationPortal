@@ -18,6 +18,8 @@ function toDomain(r: any): Registration {
     status: r.status,
     rulesAccepted: r.rulesAccepted,
     rulesAcceptedAt: r.rulesAcceptedAt ? r.rulesAcceptedAt.toISOString() : null,
+    willingToBowl: r.willingToBowl,
+    notes: r.notes,
     qrToken: r.qrToken,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
@@ -57,6 +59,8 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     tournamentId: string;
     status: RegistrationStatus;
     rulesAccepted: boolean;
+    willingToBowl: boolean;
+    notes?: string;
     qrToken: string;
   }): Promise<Registration> {
     const r = await this.db.registration.create({
@@ -64,6 +68,21 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
         ...data,
         rulesAcceptedAt: data.rulesAccepted ? new Date() : null,
       },
+    });
+    return toDomain(r);
+  }
+
+  async reactivate(
+    id: string,
+    data: { status: RegistrationStatus; rulesAccepted: boolean; willingToBowl: boolean; notes?: string; qrToken: string },
+  ): Promise<Registration> {
+    const r = await this.db.registration.update({
+      where: { id },
+      // Unlike create(), an omitted field on update() means "leave the
+      // existing value alone" — notes must be nulled explicitly or a stale
+      // note from the cancelled registration would linger when the player
+      // re-registers without one this time.
+      data: { ...data, notes: data.notes ?? null, rulesAcceptedAt: data.rulesAccepted ? new Date() : null },
     });
     return toDomain(r);
   }

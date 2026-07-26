@@ -96,6 +96,26 @@ describe("AdminRegisterPlayerForTournamentUseCase", () => {
     });
   });
 
+  it("passes willingToBowl and notes through to the registration and records them in the audit log", async () => {
+    const { playerRepo, tournamentRepo, auditLogRepo, adminRegisterPlayerForTournament } = setup();
+    const player = await playerRepo.create({ mobile: "+919876543270", ...PLAYER_PROFILE });
+    await playerRepo.assignPlayerId(player.id, "AVI-000001", "admin-1");
+    const tournament = await tournamentRepo.create({ ...TOURNAMENT_INPUT, slug: "monsoon-cup", createdByAdminId: "admin-1" });
+    await tournamentRepo.setStatus(tournament.id, "PUBLISHED");
+
+    const { registration } = await adminRegisterPlayerForTournament(tournament.id, player.id, "admin-9", {
+      willingToBowl: false,
+      notes: "Carrying a shoulder niggle, batting only",
+    });
+
+    expect(registration.willingToBowl).toBe(false);
+    expect(registration.notes).toBe("Carrying a shoulder niggle, batting only");
+    expect(auditLogRepo.entries[0].after).toMatchObject({
+      willingToBowl: false,
+      notes: "Carrying a shoulder niggle, batting only",
+    });
+  });
+
   it("does not duplicate the audit log entry when registering the same player twice (idempotent)", async () => {
     const { playerRepo, tournamentRepo, auditLogRepo, adminRegisterPlayerForTournament } = setup();
     const player = await playerRepo.create({ mobile: "+919876543270", ...PLAYER_PROFILE });

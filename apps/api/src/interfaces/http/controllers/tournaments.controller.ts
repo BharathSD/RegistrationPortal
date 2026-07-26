@@ -14,6 +14,7 @@ export interface TournamentsUseCases {
     tournamentId: string,
     playerId: string,
     adminId: string,
+    details?: { willingToBowl?: boolean; notes?: string },
   ) => Promise<{ registration: unknown; alreadyExisted: boolean }>;
 }
 
@@ -69,6 +70,7 @@ export function makeTournamentsController(useCases: TournamentsUseCases) {
         req.params.tournamentId,
         req.body.playerId,
         req.auth!.sub,
+        { willingToBowl: req.body.willingToBowl, notes: req.body.notes },
       );
       res.status(alreadyExisted ? 200 : 201).json(registration);
     },
