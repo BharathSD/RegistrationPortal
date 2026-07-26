@@ -6,7 +6,7 @@ import {
   JERSEY_SIZES,
   type AdminCreatePlayerInput,
 } from "@cricket-platform/shared";
-import { Button, Modal, RadioCardGroup } from "../../../design-system";
+import { Button, DatePicker, Modal, PhoneInput, RadioCardGroup } from "../../../design-system";
 import { Input, Select } from "../../../design-system/components/Field";
 import { useToast } from "../../../design-system/components/Toast";
 import { useAdminCreatePlayer } from "../../../lib/api/admin";
@@ -77,21 +77,14 @@ export function AddPlayerModal({ onClose }: { onClose: () => void }) {
           as a self-registered one — assign a player type and approve it from the Verification Queue once it's ready.
         </p>
 
-        <Input
-          label="Mobile"
-          required
-          type="tel"
-          placeholder="+919876543210"
-          value={data.mobile ?? ""}
-          onChange={(e) => update("mobile", e.target.value)}
-        />
+        <PhoneInput label="Mobile" required value={data.mobile ?? ""} onChange={(v) => update("mobile", v)} />
         <Input label="Full name" required value={data.fullName ?? ""} onChange={(e) => update("fullName", e.target.value)} />
-        <Input
+        <DatePicker
           label="Date of birth"
           required
-          type="date"
+          max={new Date().toISOString().slice(0, 10)}
           value={data.dateOfBirth ? String(data.dateOfBirth).slice(0, 10) : ""}
-          onChange={(e) => update("dateOfBirth", e.target.value as unknown as Date)}
+          onChange={(v) => update("dateOfBirth", v as unknown as Date)}
         />
         <Select
           label="Gender"
@@ -118,19 +111,16 @@ export function AddPlayerModal({ onClose }: { onClose: () => void }) {
           <Input label="Pincode" required value={data.pincode ?? ""} onChange={(e) => update("pincode", e.target.value)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Emergency contact (optional)"
-            value={data.emergencyContactName ?? ""}
-            onChange={(e) => update("emergencyContactName", e.target.value)}
-          />
-          <Input
-            label="Contact phone"
-            type="tel"
-            value={data.emergencyContactPhone ?? ""}
-            onChange={(e) => update("emergencyContactPhone", e.target.value)}
-          />
-        </div>
+        <Input
+          label="Emergency contact (optional)"
+          value={data.emergencyContactName ?? ""}
+          onChange={(e) => update("emergencyContactName", e.target.value)}
+        />
+        <PhoneInput
+          label="Contact phone"
+          value={data.emergencyContactPhone ?? ""}
+          onChange={(v) => update("emergencyContactPhone", v)}
+        />
 
         <Select
           label="Jersey size"

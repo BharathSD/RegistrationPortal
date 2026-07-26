@@ -8,7 +8,7 @@ import {
   type Player,
   type PlayerSelfInput,
 } from "@cricket-platform/shared";
-import { Button, Modal } from "../../design-system";
+import { Button, DatePicker, Modal, PhoneInput } from "../../design-system";
 import { Input, Select } from "../../design-system/components/Field";
 import { useToast } from "../../design-system/components/Toast";
 import { useUpdateProfile, useUploadPhoto } from "../../lib/api/players";
@@ -136,12 +136,12 @@ export function EditProfileModal({ player, onClose }: { player: Player; onClose:
               )}
             </div>
             <Input label="Full name" required value={form.fullName ?? ""} onChange={(e) => update("fullName", e.target.value)} />
-            <Input
+            <DatePicker
               label="Date of birth"
               required
-              type="date"
+              max={new Date().toISOString().slice(0, 10)}
               value={form.dateOfBirth ? String(form.dateOfBirth).slice(0, 10) : ""}
-              onChange={(e) => update("dateOfBirth", e.target.value as unknown as Date)}
+              onChange={(v) => update("dateOfBirth", v as unknown as Date)}
             />
             <Select
               label="Gender"
@@ -194,11 +194,11 @@ export function EditProfileModal({ player, onClose }: { player: Player; onClose:
         <div>
           <p className="mb-2 text-sm font-semibold">Emergency contact (optional)</p>
           <div className="flex flex-col gap-3">
-            <Input label="Contact name" value={form.emergencyContactName ?? ""} onChange={(e) => update("emergencyContactName", e.target.value)} />
             <div className="grid grid-cols-2 gap-3">
+              <Input label="Contact name" value={form.emergencyContactName ?? ""} onChange={(e) => update("emergencyContactName", e.target.value)} />
               <Input label="Relationship" value={form.emergencyContactRelation ?? ""} onChange={(e) => update("emergencyContactRelation", e.target.value)} />
-              <Input label="Contact phone" type="tel" value={form.emergencyContactPhone ?? ""} onChange={(e) => update("emergencyContactPhone", e.target.value)} />
             </div>
+            <PhoneInput label="Contact phone" value={form.emergencyContactPhone ?? ""} onChange={(v) => update("emergencyContactPhone", v)} />
           </div>
         </div>
 

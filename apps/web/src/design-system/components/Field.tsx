@@ -1,7 +1,7 @@
 import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import clsx from "clsx";
 
-interface FieldWrapperProps {
+export interface FieldWrapperProps {
   label: string;
   hint?: string;
   error?: string;
@@ -9,8 +9,8 @@ interface FieldWrapperProps {
   children: (ids: { inputId: string; describedBy: string | undefined }) => ReactNode;
 }
 
-/** Shared label/hint/error wrapper so every field gets consistent a11y wiring: explicit <label>, aria-describedby, aria-live error text. */
-function FieldWrapper({ label, hint, error, required, children }: FieldWrapperProps) {
+/** Shared label/hint/error wrapper so every field gets consistent a11y wiring: explicit <label>, aria-describedby, aria-live error text. Exported so composite fields (PhoneInput, DatePicker) get the same chrome without duplicating it. */
+export function FieldWrapper({ label, hint, error, required, children }: FieldWrapperProps) {
   const inputId = useId();
   const hintId = hint ? `${inputId}-hint` : undefined;
   const errorId = error ? `${inputId}-error` : undefined;
@@ -42,7 +42,7 @@ function FieldWrapper({ label, hint, error, required, children }: FieldWrapperPr
   );
 }
 
-const inputBaseClasses =
+export const inputBaseClasses =
   "h-11 w-full rounded-sm border border-border bg-surface px-3 text-sm text-text-primary placeholder:text-text-secondary focus-visible:border-primary disabled:opacity-50";
 
 interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "id">, Omit<FieldWrapperProps, "children"> {}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Checkbox, Modal } from "../../../design-system";
+import { Button, Checkbox, DatePicker, Modal } from "../../../design-system";
 import { Input } from "../../../design-system/components/Field";
 import { useCreateTournament, useUpdateTournament } from "../../../lib/api/tournaments";
 import { useToast } from "../../../design-system/components/Toast";
@@ -85,35 +85,35 @@ export function TournamentFormModal({ tournament, onClose }: { tournament?: Tour
         <Input label="Name" required value={form.name ?? ""} onChange={(e) => update("name", e.target.value)} />
         <Input label="Venue" required value={form.venue ?? ""} onChange={(e) => update("venue", e.target.value)} />
         <div className="grid grid-cols-2 gap-3">
-          <Input
+          <DatePicker
             label="Start date"
             required
-            type="date"
             value={form.startDate ? String(form.startDate).slice(0, 10) : ""}
-            onChange={(e) => update("startDate", e.target.value as unknown as Date)}
+            onChange={(v) => update("startDate", v as unknown as Date)}
           />
-          <Input
+          <DatePicker
             label="End date"
             required
-            type="date"
+            min={form.startDate ? String(form.startDate).slice(0, 10) : undefined}
             value={form.endDate ? String(form.endDate).slice(0, 10) : ""}
-            onChange={(e) => update("endDate", e.target.value as unknown as Date)}
+            onChange={(v) => update("endDate", v as unknown as Date)}
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Input
+          <DatePicker
             label="Registration opens"
             required
-            type="datetime-local"
+            showTime
             value={form.registrationOpenAt ? String(form.registrationOpenAt) : ""}
-            onChange={(e) => update("registrationOpenAt", e.target.value as unknown as Date)}
+            onChange={(v) => update("registrationOpenAt", v as unknown as Date)}
           />
-          <Input
+          <DatePicker
             label="Registration closes"
             required
-            type="datetime-local"
+            showTime
+            min={form.registrationOpenAt ? String(form.registrationOpenAt).slice(0, 10) : undefined}
             value={form.registrationCloseAt ? String(form.registrationCloseAt) : ""}
-            onChange={(e) => update("registrationCloseAt", e.target.value as unknown as Date)}
+            onChange={(v) => update("registrationCloseAt", v as unknown as Date)}
           />
         </div>
         <Input

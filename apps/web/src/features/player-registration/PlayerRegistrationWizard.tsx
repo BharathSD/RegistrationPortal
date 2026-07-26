@@ -7,7 +7,7 @@ import {
   JERSEY_SIZES,
   type PlayerProfileInput,
 } from "@cricket-platform/shared";
-import { Button, Card, Checkbox, RadioCardGroup, Stepper } from "../../design-system";
+import { Button, Card, Checkbox, DatePicker, PhoneInput, RadioCardGroup, Stepper } from "../../design-system";
 import { Input, Select } from "../../design-system/components/Field";
 import { OtpGate } from "../auth-otp/OtpGate";
 import { useRegisterPlayer, useUploadPhoto } from "../../lib/api/players";
@@ -293,12 +293,12 @@ function StepPersonal({ data, update, onNext, onBack }: StepProps) {
     <Card className="flex flex-col gap-4">
       <h2 className="font-display text-lg font-semibold">Personal information</h2>
       <Input label="Full name" required value={data.fullName ?? ""} onChange={(e) => update("fullName", e.target.value)} />
-      <Input
+      <DatePicker
         label="Date of birth"
         required
-        type="date"
+        max={new Date().toISOString().slice(0, 10)}
         value={data.dateOfBirth ? String(data.dateOfBirth).slice(0, 10) : ""}
-        onChange={(e) => update("dateOfBirth", e.target.value as unknown as Date)}
+        onChange={(v) => update("dateOfBirth", v as unknown as Date)}
       />
       <Select
         label="Gender"
@@ -375,11 +375,11 @@ function StepEmergencyContact({ data, update, onNext, onBack }: StepProps) {
     <Card className="flex flex-col gap-4">
       <h2 className="font-display text-lg font-semibold">Emergency contact</h2>
       <p className="-mt-2 text-xs text-text-secondary">Optional — add this now, or later from your dashboard.</p>
-      <Input label="Contact name" value={data.emergencyContactName ?? ""} onChange={(e) => update("emergencyContactName", e.target.value)} />
       <div className="grid grid-cols-2 gap-3">
+        <Input label="Contact name" value={data.emergencyContactName ?? ""} onChange={(e) => update("emergencyContactName", e.target.value)} />
         <Input label="Relationship" value={data.emergencyContactRelation ?? ""} onChange={(e) => update("emergencyContactRelation", e.target.value)} />
-        <Input label="Contact phone" type="tel" value={data.emergencyContactPhone ?? ""} onChange={(e) => update("emergencyContactPhone", e.target.value)} />
       </div>
+      <PhoneInput label="Contact phone" value={data.emergencyContactPhone ?? ""} onChange={(v) => update("emergencyContactPhone", v)} />
       <NavButtons onBack={onBack} onNext={onNext} />
     </Card>
   );

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { OtpPurpose } from "@cricket-platform/shared";
 import { MOBILE_REGEX } from "@cricket-platform/shared";
-import { Button } from "../../design-system";
-import { Input } from "../../design-system/components/Field";
+import { Button, PhoneInput } from "../../design-system";
 import { useRequestOtp, useVerifyOtp, type VerifyOtpResponse } from "../../lib/api/auth";
 import { ApiError } from "../../lib/api/client";
 import { useToast } from "../../design-system/components/Toast";
@@ -18,7 +17,7 @@ interface OtpGateProps {
 
 export function OtpGate({ purpose, title, subtitle, onVerified }: OtpGateProps) {
   const [step, setStep] = useState<"mobile" | "otp">("mobile");
-  const [mobile, setMobile] = useState("+91");
+  const [mobile, setMobile] = useState("");
   const [mobileError, setMobileError] = useState<string | undefined>();
   const [code, setCode] = useState<string[]>(Array(6).fill(""));
   const [codeError, setCodeError] = useState<string | undefined>();
@@ -104,14 +103,12 @@ export function OtpGate({ purpose, title, subtitle, onVerified }: OtpGateProps) 
         <h1 className="font-display text-2xl font-bold">{title}</h1>
         {subtitle && <p className="text-sm text-text-secondary">{subtitle}</p>}
         <div className="text-left">
-          <Input
+          <PhoneInput
             label="Mobile number"
             required
-            type="tel"
-            inputMode="tel"
             value={mobile}
             error={mobileError}
-            onChange={(e) => setMobile(e.target.value)}
+            onChange={setMobile}
             onKeyDown={(e) => e.key === "Enter" && sendOtp()}
           />
         </div>
