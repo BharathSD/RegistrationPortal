@@ -21,7 +21,7 @@ npm run prisma:seed                # demo tournaments, admin user, sample player
 npm run dev                        # api on :4000, web on :5173
 ```
 
-Default seeded admin: `admin@cricket-platform.dev` / `Admin@12345` (SUPER_ADMIN) — **rotate immediately in any non-local environment.**
+Default seeded accounts: `admin@aviyukthas.com` / `Admin@12345` (ADMIN) and `scanner@aviyukthas.com` / `Scanner@12345` (SCANNER) — **rotate both immediately in any non-local environment.**
 
 ## 2. Full Docker Compose (dev-parity stack)
 
@@ -91,3 +91,39 @@ See [`.env.example`](../.env.example) at the repo root for the full list. Produc
 - Daily automated Postgres backups (managed-DB default), weekly restore drill.
 - Object storage bucket versioning enabled (protects against accidental overwrite of profile photos).
 - RPO target: 24h (backup cadence) — tighten to continuous PITR if the managed provider supports it and the org's risk tolerance requires it.
+
+## 7. Alternative: Render.com (interim, pre-R2)
+
+A PaaS path for getting real users on the app quickly, before Cloudflare R2 is set up — no self-hosted VM, no code changes from the rest of this guide. Storage is self-hosted MinIO in the interim (see [S3StorageProvider.ts](../apps/api/src/infrastructure/storage/S3StorageProvider.ts) — same S3-compatible code path R2 will use later, so migrating off MinIO afterwards is an env-var change, not a code change).
+
+**The one thing that differs from a normal Render deploy**: Postgres and Redis can be fully private (only the API needs to reach them), but MinIO can't be — profile photos are `<img>` tags the *browser* loads directly, so MinIO must run as a public Render Web Service, not a Private Service.
+
+1. **MinIO — Render Web Service** (not Private), from the `minio/minio` image, start command `server /data --console-address ":9001"`.
+   - Attach a persistent **Disk** mounted at `/data` (requires a paid instance type — Render's free tier doesn't support disks).
+   - Set `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` to real generated secrets, not the `minioadmin`/`minioadmin` local-dev defaults — this instance is internet-reachable, so weak root credentials would let anyone who finds the URL write/delete objects (anonymous *read* is intentionally public via the bucket policy below; the root credentials are what gate *write* access).
+   - Once it's up, run the one-time bucket setup from your own machine against its public URL:
+     ```bash
+     mc alias set render-minio https://<your-minio-service>.onrender.com <ROOT_USER> <ROOT_PASSWORD>
+     mc mb render-minio/cricket-uploads
+     mc anonymous set download render-minio/cricket-uploads
+     ```
+
+2. **Postgres + Redis** — Render's managed Postgres and Key Value add-ons, kept private.
+
+3. **API — Render Web Service**, built from `infra/docker/api.Dockerfile`. In addition to the usual vars from §4:
+   ```
+   STORAGE_DRIVER=s3
+   S3_ENDPOINT=https://<your-minio-service>.onrender.com
+   S3_FORCE_PATH_STYLE=true
+   S3_PUBLIC_URL_BASE=https://<your-minio-service>.onrender.com/cricket-uploads
+   S3_BUCKET=cricket-uploads
+   S3_ACCESS_KEY_ID=<the MinIO root user>
+   S3_SECRET_ACCESS_KEY=<the MinIO root password>
+   ```
+   Wire `npx prisma migrate deploy` as Render's pre-deploy/release command (same one-shot-before-rollout principle as §3.4). Health check on `GET /healthz`.
+
+4. **Web — Render Static Site**, built from `apps/web`, `VITE_API_BASE_URL` pointing at the API service's Render URL.
+
+5. **Before sharing the link with anyone**: rotate the seeded admin/scanner passwords (§1) — they're still the `seed.ts` defaults until you change them.
+
+**Migrating to R2 later**: point `S3_ENDPOINT` at your R2 account endpoint, swap the access key/secret for R2 credentials, update `S3_PUBLIC_URL_BASE` to the R2 public bucket URL (or a custom domain in front of it), and decommission the MinIO service. No application code changes either way.

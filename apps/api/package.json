@@ -22,6 +22,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1095.0",
     "@cricket-platform/shared": "*",
     "@prisma/client": "^5.18.0",
     "bcryptjs": "^2.4.3",

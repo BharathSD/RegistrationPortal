@@ -53,6 +53,16 @@ const envSchema = z.object({
   S3_REGION: z.string().optional(),
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
+  // Only set for S3-*compatible* providers (MinIO, R2, B2) — omit entirely
+  // for real AWS S3, where the SDK derives the endpoint from S3_REGION.
+  S3_ENDPOINT: z.string().optional(),
+  // MinIO needs path-style addressing (bucket in the URL path); AWS S3
+  // needs virtual-hosted-style (bucket as a subdomain) — R2 accepts either.
+  S3_FORCE_PATH_STYLE: z.coerce.boolean().default(false),
+  // Base URL object URLs are served from. Defaults to deriving one from
+  // S3_ENDPOINT/S3_REGION + S3_BUCKET below if left unset — only needed
+  // explicitly when a CDN/custom domain sits in front of the bucket.
+  S3_PUBLIC_URL_BASE: z.string().optional(),
 
   SMS_PROVIDER: z.enum(["console", "twilio", "msg91"]).default("console"),
   TWILIO_ACCOUNT_SID: z.string().optional(),

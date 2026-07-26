@@ -24,6 +24,43 @@ services:
     ports:
       - "6379:6379"
 
+  # S3-compatible object storage for profile photos (STORAGE_DRIVER=s3).
+  # Same @aws-sdk/client-s3 code path works unchanged against Cloudflare R2
+  # in production — only S3_ENDPOINT/credentials differ, see
+  # docs/DEPLOYMENT.md #3.2.
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: creates the bucket and makes it public-read (profile photos
+  # aren't sensitive — same contract as LocalStorageProvider's /uploads
+  # static route), then exits. Re-running is a no-op if the bucket exists.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:-minioadmin} ${S3_SECRET_ACCESS_KEY:-minioadmin} &&
+        mc mb -p local/${S3_BUCKET:-cricket-uploads} &&
+        mc anonymous set download local/${S3_BUCKET:-cricket-uploads}
+      "
+
   api:
     build:
       context: ..
@@ -38,6 +75,17 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-cricket_admin}:${POSTGRES_PASSWORD:-change_me_in_production}@postgres:5432/${POSTGRES_DB:-cricket_platform}?schema=public
       REDIS_URL: redis://redis:6379
+      STORAGE_DRIVER: s3
+      S3_ENDPOINT: http://minio:9000
+      S3_FORCE_PATH_STYLE: "true"
+      S3_BUCKET: ${S3_BUCKET:-cricket-uploads}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-minioadmin}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+      # Browser-reachable URL for object links returned to the web app —
+      # different from S3_ENDPOINT (the api container's internal DNS name
+      # for minio, not resolvable outside this compose network).
+      S3_PUBLIC_URL_BASE: http://localhost:9000/${S3_BUCKET:-cricket-uploads}
     ports:
       - "4000:4000"
     depends_on:
@@ -45,8 +93,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    volumes:
-      - api_uploads:/app/apps/api/uploads
+      minio-init:
+        condition: service_completed_successfully
 
   web:
     build:
@@ -62,4 +110,4 @@ services:
 
 volumes:
   pgdata:
-  api_uploads:
+  minio_data:
